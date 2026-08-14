@@ -7,13 +7,13 @@
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <cstdint>
 
 namespace
 {
     constexpr int kToggleKey = VK_F2;
 
     bool g_holdMode = false;
-
 
     // ========================================================================
     // THEME
@@ -40,7 +40,6 @@ namespace
         const ImVec4 accentSoft =
             ImVec4(0.910f, 0.004f, 0.004f, 0.55f);
 
-
         ImGuiStyle& style = ImGui::GetStyle();
 
         style.WindowRounding = 4.0f;
@@ -59,7 +58,6 @@ namespace
 
         style.ItemSpacing =
             ImVec2(8.0f, 6.0f);
-
 
         ImVec4* c = style.Colors;
 
@@ -130,7 +128,6 @@ namespace
             accentSoft;
     }
 
-
     // ========================================================================
     // KEY EDGE DETECTION
     // ========================================================================
@@ -149,15 +146,10 @@ namespace
         return edge;
     }
 
-
     // ========================================================================
     // CONTROLLER / KEYBOARD TOGGLES
     // ========================================================================
-    // NOTE: this still drives every controlled variable from ONE shared
-    // trigger (same behavior as before, when it hardcoded CamDistCtl +
-    // CamRotCtl together) -- it now just loops over however many variables
-    // VarCtl has instead of naming each one. If you ever want independent
-    // per-variable toggles, this is the function to change.
+    // One shared trigger controls all VarCtl variables.
 
     void HandleTriggers()
     {
@@ -165,7 +157,6 @@ namespace
 
         uint32_t bound =
             Pad::g_boundButton.load();
-
 
         // --------------------------------------------------------------------
         // HOLD MODE
@@ -180,14 +171,13 @@ namespace
             bool keyHeld =
                 (GetAsyncKeyState(kToggleKey) & 0x8000) != 0;
 
-
             bool active =
                 padHeld || keyHeld;
 
-
             for (size_t i = 0; i < VarCtl::Count(); i++)
+            {
                 VarCtl::SetActiveAt(i, active);
-
+            }
 
             Pad::ConsumePress(bound);
 
@@ -195,7 +185,6 @@ namespace
 
             return;
         }
-
 
         // --------------------------------------------------------------------
         // TOGGLE MODE
@@ -205,8 +194,9 @@ namespace
             Pad::ConsumePress(bound);
 
         if (KeyPressedEdge(kToggleKey, keyWasDown))
+        {
             fired = true;
-
+        }
 
         if (fired)
         {
@@ -214,13 +204,15 @@ namespace
                 VarCtl::Count() > 0 &&
                 VarCtl::IsActiveAt(0);
 
-            bool newState = !current;
+            bool newState =
+                !current;
 
             for (size_t i = 0; i < VarCtl::Count(); i++)
+            {
                 VarCtl::SetActiveAt(i, newState);
+            }
         }
     }
-
 
     // ========================================================================
     // CONTROLLER REBIND
@@ -234,6 +226,127 @@ namespace
         }
     }
 
+    // ========================================================================
+    // DRAW FLOAT VARIABLE
+    // ========================================================================
+
+    void DrawFloatControl(size_t index, const char* name)
+    {
+        ImGui::Text(
+            "current %.3f",
+            VarCtl::CurrentValueAt(index)
+        );
+
+        bool active =
+            VarCtl::IsActiveAt(index);
+
+        std::string overrideLabel =
+            std::string(name) + " override";
+
+        if (ImGui::Checkbox(
+            overrideLabel.c_str(),
+            &active
+        ))
+        {
+            VarCtl::SetActiveAt(index, active);
+        }
+
+        if (VarCtl::ShowSliderAt(index))
+        {
+            ImGui::SetNextItemWidth(160.0f);
+
+            ImGui::SliderFloat(
+                name,
+                VarCtl::OverridePtrAt(index),
+                VarCtl::LowerLimitAt(index),
+                VarCtl::UpperLimitAt(index)
+            );
+        }
+    }
+
+    // ========================================================================
+    // DRAW INT VARIABLE
+    // ========================================================================
+
+    void DrawIntControl(size_t index, const char* name)
+    {
+        ImGui::Text(
+            "current %d",
+            VarCtl::CurrentIntAt(index)
+        );
+
+        bool active =
+            VarCtl::IsActiveAt(index);
+
+        std::string overrideLabel =
+            std::string(name) + " override";
+
+        if (ImGui::Checkbox(
+            overrideLabel.c_str(),
+            &active
+        ))
+        {
+            VarCtl::SetActiveAt(index, active);
+        }
+
+        if (VarCtl::ShowSliderAt(index))
+        {
+            ImGui::SetNextItemWidth(160.0f);
+
+            ImGui::SliderInt(
+                name,
+                VarCtl::OverrideIntPtrAt(index),
+                static_cast<int>(
+                    VarCtl::LowerLimitAt(index)
+                    ),
+                static_cast<int>(
+                    VarCtl::UpperLimitAt(index)
+                    )
+            );
+        }
+    }
+
+    // ========================================================================
+    // DRAW BOOL VARIABLE
+    // ========================================================================
+
+    void DrawBoolControl(size_t index, const char* name)
+    {
+        ImGui::Text(
+            "current %s",
+            VarCtl::CurrentBoolAt(index)
+            ? "true"
+            : "false"
+        );
+
+        bool active =
+            VarCtl::IsActiveAt(index);
+
+        std::string overrideLabel =
+            std::string(name) + " override";
+
+        if (ImGui::Checkbox(
+            overrideLabel.c_str(),
+            &active
+        ))
+        {
+            VarCtl::SetActiveAt(index, active);
+        }
+
+        bool overrideValue =
+            VarCtl::OverrideBoolAt(index);
+
+        if (ImGui::Checkbox(
+            "value",
+            &overrideValue
+        ))
+        {
+            VarCtl::SetOverrideBoolAt(
+                index,
+                overrideValue
+            );
+        }
+    }
 
     // ========================================================================
     // GUI
@@ -247,25 +360,24 @@ namespace
             ImGuiWindowFlags_AlwaysAutoResize
         );
 
-
         // ====================================================================
         // CONTROLLED VARIABLES
-        // ====================================================================
-        // One block per VarCtl entry, generated from the list in VarCtl.cpp
-        // instead of being hand-written per variable. Adding a variable
-        // there automatically gets it a section here, no gui.cpp changes.
         // ====================================================================
 
         for (size_t i = 0; i < VarCtl::Count(); i++)
         {
             ImGui::PushID(static_cast<int>(i));
 
-            const char* name = VarCtl::NameAt(i);
+            const char* name =
+                VarCtl::NameAt(i);
 
             ImGui::TextUnformatted(name);
 
             ImGui::Separator();
 
+            // ----------------------------------------------------------------
+            // Runtime status
+            // ----------------------------------------------------------------
 
             if (!VarCtl::ReadyAt(i))
             {
@@ -282,48 +394,33 @@ namespace
             }
             else
             {
-                ImGui::Text(
-                    "current %.3f",
-                    VarCtl::CurrentValueAt(i)
-                );
+                // ------------------------------------------------------------
+                // Select UI based on variable type
+                // ------------------------------------------------------------
 
-
-                bool active =
-                    VarCtl::IsActiveAt(i);
-
-
-                if (ImGui::Checkbox(
-                    (std::string(name) + " override").c_str(),
-                    &active
-                ))
+                switch (VarCtl::TypeAt(i))
                 {
-                    VarCtl::SetActiveAt(i, active);
-                }
+                case VarCtl::ValueType::Float:
+                    DrawFloatControl(i, name);
+                    break;
 
+                case VarCtl::ValueType::Int:
+                    DrawIntControl(i, name);
+                    break;
 
-                if (VarCtl::ShowSliderAt(i))
-                {
-                    ImGui::SetNextItemWidth(160.0f);
-
-                    ImGui::SliderFloat(
-                        name,
-                        VarCtl::OverridePtrAt(i),
-                        VarCtl::LowerLimitAt(i),
-                        VarCtl::UpperLimitAt(i)
-                    );
+                case VarCtl::ValueType::Bool:
+                    DrawBoolControl(i, name);
+                    break;
                 }
             }
-
 
             ImGui::PopID();
 
             ImGui::Spacing();
         }
 
-
         ImGui::Separator();
         ImGui::Spacing();
-
 
         // ====================================================================
         // MODE
@@ -333,15 +430,12 @@ namespace
             ImGui::CalcTextSize("controller button").x +
             ImGui::GetStyle().ItemSpacing.x * 2.0f;
 
-
         int mode =
             g_holdMode ? 1 : 0;
-
 
         ImGui::TextUnformatted("mode");
 
         ImGui::SameLine(labelColumn);
-
 
         bool modeChanged =
             ImGui::RadioButton(
@@ -350,9 +444,7 @@ namespace
                 0
             );
 
-
         ImGui::SameLine();
-
 
         modeChanged |=
             ImGui::RadioButton(
@@ -361,10 +453,11 @@ namespace
                 1
             );
 
-
         if (modeChanged)
-            g_holdMode = mode == 1;
-
+        {
+            g_holdMode =
+                mode == 1;
+        }
 
         // ====================================================================
         // CONTROLLER BUTTON
@@ -373,7 +466,6 @@ namespace
         uint32_t bound =
             Pad::g_boundButton.load();
 
-
         ImGui::TextUnformatted(
             "controller button"
         );
@@ -381,7 +473,6 @@ namespace
         ImGui::SameLine(labelColumn);
 
         ImGui::SetNextItemWidth(110.0f);
-
 
         if (ImGui::BeginCombo(
             "##bind",
@@ -395,7 +486,6 @@ namespace
             {
                 Pad::g_boundButton.store(0);
             }
-
 
             for (int i = 0;
                 i < Pad::kButtonCount;
@@ -412,13 +502,10 @@ namespace
                 }
             }
 
-
             ImGui::EndCombo();
         }
 
-
         ImGui::SameLine();
-
 
         if (Pad::Listening())
         {
@@ -437,11 +524,9 @@ namespace
             }
         }
 
-
         ImGui::End();
     }
 }
-
 
 // ============================================================================
 // GUI FRAME
@@ -457,9 +542,7 @@ namespace Gui
 
         HandleTriggers();
 
-
         VarCtl::Tick();
-
 
         if (Overlay::MenuOpen())
         {
