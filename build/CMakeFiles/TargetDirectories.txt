@@ -1,4 +1,0 @@
-C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod/build/CMakeFiles/jibbers_supa_cool_slo_mo.dir
-C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod/build/CMakeFiles/inject.dir
-C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod/build/CMakeFiles/ALL_BUILD.dir
-C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod/build/CMakeFiles/ZERO_CHECK.dir

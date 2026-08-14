@@ -125,7 +125,7 @@ CMAKE_PROJECT_DESCRIPTION:STATIC=
 CMAKE_PROJECT_HOMEPAGE_URL:STATIC=
 
 //Value Computed by CMake
-CMAKE_PROJECT_NAME:STATIC=jibbers_supa_cool_slo_mo
+CMAKE_PROJECT_NAME:STATIC=Jummpers
 
 //RC compiler
 CMAKE_RC_COMPILER:FILEPATH=C:/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/rc.exe
@@ -197,6 +197,15 @@ CMAKE_STATIC_LINKER_FLAGS_RELWITHDEBINFO:STRING=
 // during the make.  This is useful for debugging only. With Visual
 // Studio IDE projects all commands are done without /nologo.
 CMAKE_VERBOSE_MAKEFILE:BOOL=FALSE
+
+//Value Computed by CMake
+Jummpers_BINARY_DIR:STATIC=C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod/out/build/x64-Debug
+
+//Value Computed by CMake
+Jummpers_IS_TOP_LEVEL:STATIC=ON
+
+//Value Computed by CMake
+Jummpers_SOURCE_DIR:STATIC=C:/Users/trevd/Downloads/jibbersTools/RealMods/testmod
 
 //The directory containing a CMake configuration file for imgui.
 imgui_DIR:PATH=imgui_DIR-NOTFOUND

@@ -29,16 +29,16 @@ namespace
         applied = true;
 
         const ImVec4 accent =
-            ImVec4(0.004f, 0.667f, 0.910f, 1.00f);
+            ImVec4(0.910f, 0.004f, 0.004f, 1.00f);
 
         const ImVec4 accentHover =
-            ImVec4(0.180f, 0.745f, 0.945f, 1.00f);
+            ImVec4(0.945f, 0.180f, 0.180f, 1.00f);
 
         const ImVec4 accentDim =
-            ImVec4(0.004f, 0.667f, 0.910f, 0.35f);
+            ImVec4(0.910f, 0.004f, 0.004f, 0.35f);
 
         const ImVec4 accentSoft =
-            ImVec4(0.004f, 0.667f, 0.910f, 0.55f);
+            ImVec4(0.910f, 0.004f, 0.004f, 0.55f);
 
 
         ImGuiStyle& style = ImGui::GetStyle();

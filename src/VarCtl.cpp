@@ -300,7 +300,10 @@ namespace
         { "Camera Distance",                  "distance",     1.0f,  10.0f,  -1.0f,  50.0f, true },
         { "Camera Rotation Speed",            "rotateSpeed",  1.0f,  10.0f,   0.0f, 360.0f, true },
         { "Camera Rotation ",                 "yAngle",       1.0f,  10.0f,   0.0f, 360.0f, true },
-        { "Stop Camera",                      "speed",        1.0f,  0.0f,    0.0f, 360.0f, false }
+        { "Stop Camera",                      "speed",        1.0f,  0.0f,    0.0f, 360.0f, false },
+        { "Move Speed",                       "moveSpeed",    1.0f,  10.0f,   0.0f, 20.0f,  true },
+        { "Ski Drag",                 "skiDrag",   1.0f,  10.0f,   0.0f, 5000.0f,  true }
+        
 
         // Example of adding a third one -- just uncomment/edit and rebuild,
         // nothing else in this file or the header needs to change:

@@ -2,6 +2,7 @@
 #include "overlay.h"
 #include "VarCtl.h"
 #include "controller.h"
+#include "EventHooks.h"
 
 #include <windows.h>
 #include "MinHook.h"
@@ -15,6 +16,7 @@ namespace
         Overlay::Start(Gui::Frame);
 
         VarCtl::Init();
+        EventHooks::Init();
         return 0;
     }
 }

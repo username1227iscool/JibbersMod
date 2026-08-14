@@ -7,9 +7,10 @@
   },
   "ExpandedNodes": [
     "",
-    "\\build",
+    "\\injector",
+    "\\jibbers dump",
     "\\src"
   ],
-  "SelectedNode": "\\src\\VarCtl.cpp",
+  "SelectedNode": "\\jibbers dump\\dump.cs",
   "PreviewInSolutionExplorer": false
 }

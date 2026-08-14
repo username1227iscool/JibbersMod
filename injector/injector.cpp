@@ -230,7 +230,7 @@ int wmain(int argc, wchar_t** argv)
     // "--process", "--auto" to skip the Insert-key wait) instead of
     // relying on positional args.
     // ------------------------------------------------------------------
-    std::wstring dllPath = argc > 1 ? argv[1] : ExeDirectory() + L"jibbers supa cool slo mo.dll";
+    std::wstring dllPath = argc > 1 ? argv[1] : ExeDirectory() + L"Jummpers.dll";
     std::wstring processName = argc > 2 ? argv[2] : L"Jibbers.exe";
 
     if (GetFileAttributesW(dllPath.c_str()) == INVALID_FILE_ATTRIBUTES)

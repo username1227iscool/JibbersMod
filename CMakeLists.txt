@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(jibbers_supa_cool_slo_mo)
+project(Jummpers)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -12,7 +12,7 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 find_package(imgui CONFIG REQUIRED)
 
-add_library(jibbers_supa_cool_slo_mo SHARED
+add_library(Jummpers SHARED
     src/dllmain.cpp
     src/overlay.cpp
     src/gui.cpp
@@ -20,6 +20,7 @@ add_library(jibbers_supa_cool_slo_mo SHARED
     src/il2cpp_api.cpp
     src/Main.cpp
     src/VarCtl.cpp
+    src/Eventhooks.cpp
     minhook/src/buffer.c
     minhook/src/hook.c
     minhook/src/trampoline.c
@@ -27,20 +28,20 @@ add_library(jibbers_supa_cool_slo_mo SHARED
     minhook/src/hde/hde64.c
 )
 
-target_include_directories(jibbers_supa_cool_slo_mo PRIVATE
+target_include_directories(Jummpers PRIVATE
     src
     minhook/include
     minhook/src
 )
 
-target_link_libraries(jibbers_supa_cool_slo_mo PRIVATE
+target_link_libraries(Jummpers PRIVATE
     imgui::imgui
     d3d11
     d3d12
     dxgi
 )
 
-set_target_properties(jibbers_supa_cool_slo_mo PROPERTIES OUTPUT_NAME "jibbers supa cool slo mo")
+set_target_properties(Jummpers PROPERTIES OUTPUT_NAME "Jummpers")
 
 add_executable(inject injector/injector.cpp)
 target_link_libraries(inject PRIVATE user32)
