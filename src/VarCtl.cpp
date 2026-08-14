@@ -48,7 +48,8 @@ namespace
     // FIND OBJECTS OF TYPE
     // ========================================================================
 
-    Il2CppMethod FindObjectsOfTypeMethod(Il2CppClass unityObjectClass)
+    Il2CppMethod FindObjectsOfTypeMethod(
+        Il2CppClass unityObjectClass)
     {
         return g_api.class_get_method_from_name(
             unityObjectClass,
@@ -78,11 +79,16 @@ namespace
                 "Object"
             );
 
-        if (!g_monoBehaviourClass || !unityObjectClass)
+        if (!g_monoBehaviourClass ||
+            !unityObjectClass)
+        {
             return false;
+        }
 
         g_findObjectsOfType =
-            FindObjectsOfTypeMethod(unityObjectClass);
+            FindObjectsOfTypeMethod(
+                unityObjectClass
+            );
 
         if (!g_findObjectsOfType)
             return false;
@@ -130,7 +136,8 @@ namespace
         Il2CppField field,
         VarCtl::ValueType requestedType)
     {
-        if (!g_api.field_get_type ||
+        if (!field ||
+            !g_api.field_get_type ||
             !g_api.class_from_type ||
             !g_api.class_get_name)
         {
@@ -165,6 +172,9 @@ namespace
 
         case VarCtl::ValueType::Bool:
             return std::strcmp(typeName, "Boolean") == 0;
+
+        case VarCtl::ValueType::Vector3:
+            return std::strcmp(typeName, "Vector3") == 0;
         }
 
         return false;
@@ -172,7 +182,7 @@ namespace
 
 
     // ========================================================================
-    // FIND A FIELD ON ANY MONOBEHAVIOUR
+    // FIND FIELD AND OBJECT
     // ========================================================================
 
     bool FindFieldAndObject(
@@ -184,15 +194,24 @@ namespace
         outObject = nullptr;
         outField = nullptr;
 
-        if (!g_apiReady)
+        if (!g_apiReady ||
+            !fieldName ||
+            !g_monoBehaviourClass ||
+            !g_findObjectsOfType)
+        {
             return false;
+        }
 
         const Il2CppType* monoBehaviourType =
-            g_api.class_get_type(g_monoBehaviourClass);
+            g_api.class_get_type(
+                g_monoBehaviourClass
+            );
 
         Il2CppReflectionType* typeObject =
             monoBehaviourType
-            ? g_api.type_get_object(monoBehaviourType)
+            ? g_api.type_get_object(
+                monoBehaviourType
+            )
             : nullptr;
 
         if (!typeObject)
@@ -225,7 +244,9 @@ namespace
         if (!elements)
             return false;
 
-        for (uint32_t i = 0; i < length; ++i)
+        for (uint32_t i = 0;
+            i < length;
+            ++i)
         {
             void* instance =
                 elements[i];
@@ -234,7 +255,9 @@ namespace
                 continue;
 
             Il2CppClass instanceClass =
-                g_api.object_get_class(instance);
+                g_api.object_get_class(
+                    instance
+                );
 
             if (!instanceClass)
                 continue;
@@ -251,7 +274,8 @@ namespace
 
             if (!FieldIsSupported(
                 field,
-                requestedType))
+                requestedType
+            ))
             {
                 continue;
             }
@@ -283,10 +307,11 @@ namespace
 
         float multiplier;
 
-        // Type-specific override storage
         float overrideFloat;
         int overrideInt;
         bool overrideBool;
+
+        VarCtl::Vector3 overrideVector3;
 
         float lowerLimit;
         float upperLimit;
@@ -310,9 +335,13 @@ namespace
         int originalInt = 0;
         bool originalBool = false;
 
+        VarCtl::Vector3 originalVector3{ 0.0f, 0.0f, 0.0f };
+
         float lastTargetFloat = 0.0f;
         int lastTargetInt = 0;
         bool lastTargetBool = false;
+
+        VarCtl::Vector3 lastTargetVector3{ 0.0f, 0.0f, 0.0f };
 
         DWORD nextScanTick = 0;
 
@@ -338,10 +367,17 @@ namespace
         }
 
 
+        // --------------------------------------------------------------------
+        // CACHE ORIGINAL
+        // --------------------------------------------------------------------
+
         void CacheOriginal()
         {
-            if (!Found() || originalCached)
+            if (!Found() ||
+                originalCached)
+            {
                 return;
+            }
 
             switch (type)
             {
@@ -384,6 +420,20 @@ namespace
                 );
 
                 originalBool = value;
+                break;
+            }
+
+            case VarCtl::ValueType::Vector3:
+            {
+                VarCtl::Vector3 value{};
+
+                g_api.field_get_value(
+                    object,
+                    field,
+                    &value
+                );
+
+                originalVector3 = value;
                 break;
             }
             }
@@ -441,6 +491,19 @@ namespace
 
                 return value ? 1.0f : 0.0f;
             }
+
+            case VarCtl::ValueType::Vector3:
+            {
+                VarCtl::Vector3 value{};
+
+                g_api.field_get_value(
+                    object,
+                    field,
+                    &value
+                );
+
+                return value.x;
+            }
             }
 
             return 0.0f;
@@ -458,11 +521,14 @@ namespace
 
             int value = 0;
 
-            g_api.field_get_value(
-                object,
-                field,
-                &value
-            );
+            if (type == VarCtl::ValueType::Int)
+            {
+                g_api.field_get_value(
+                    object,
+                    field,
+                    &value
+                );
+            }
 
             return value;
         }
@@ -479,11 +545,38 @@ namespace
 
             bool value = false;
 
-            g_api.field_get_value(
-                object,
-                field,
-                &value
-            );
+            if (type == VarCtl::ValueType::Bool)
+            {
+                g_api.field_get_value(
+                    object,
+                    field,
+                    &value
+                );
+            }
+
+            return value;
+        }
+
+
+        // --------------------------------------------------------------------
+        // READ VECTOR3
+        // --------------------------------------------------------------------
+
+        VarCtl::Vector3 ReadVector3()
+        {
+            if (!Found())
+                return { 0.0f, 0.0f, 0.0f };
+
+            VarCtl::Vector3 value{};
+
+            if (type == VarCtl::ValueType::Vector3)
+            {
+                g_api.field_get_value(
+                    object,
+                    field,
+                    &value
+                );
+            }
 
             return value;
         }
@@ -547,6 +640,42 @@ namespace
 
 
         // --------------------------------------------------------------------
+        // WRITE VECTOR3
+        // --------------------------------------------------------------------
+
+        void WriteVector3(
+            const VarCtl::Vector3& value)
+        {
+            if (!Found())
+                return;
+
+            VarCtl::Vector3 copy = value;
+
+            g_api.field_set_value(
+                object,
+                field,
+                &copy
+            );
+
+            touched = true;
+        }
+
+
+        // --------------------------------------------------------------------
+        // VECTOR3 EQUALITY
+        // --------------------------------------------------------------------
+
+        static bool SameVector3(
+            const VarCtl::Vector3& a,
+            const VarCtl::Vector3& b)
+        {
+            return a.x == b.x &&
+                a.y == b.y &&
+                a.z == b.z;
+        }
+
+
+        // --------------------------------------------------------------------
         // TICK
         // --------------------------------------------------------------------
 
@@ -558,13 +687,12 @@ namespace
             EnsureThreadAttached();
 
             // ---------------------------------------------------------------
-            // Object disappeared / changed
+            // Object disappeared or changed
             // ---------------------------------------------------------------
 
             if (!InstanceAlive(object) || !Found())
             {
-                DWORD now =
-                    GetTickCount();
+                DWORD now = GetTickCount();
 
                 if (now < nextScanTick)
                     return;
@@ -581,6 +709,8 @@ namespace
                 lastTargetFloat = 0.0f;
                 lastTargetInt = 0;
                 lastTargetBool = false;
+                lastTargetVector3 =
+                { 0.0f, 0.0f, 0.0f };
             }
 
             // ---------------------------------------------------------------
@@ -592,22 +722,16 @@ namespace
             if (!originalCached)
                 return;
 
-            // ---------------------------------------------------------------
-            // Determine active state
-            // ---------------------------------------------------------------
-
             bool enabled =
                 active.load(
                     std::memory_order_relaxed
                 );
 
             // ---------------------------------------------------------------
-            // Apply correct type
+            // FLOAT
             // ---------------------------------------------------------------
 
-            switch (type)
-            {
-            case VarCtl::ValueType::Float:
+            if (type == VarCtl::ValueType::Float)
             {
                 float target =
                     enabled
@@ -620,10 +744,14 @@ namespace
                     lastTargetFloat = target;
                 }
 
-                break;
+                return;
             }
 
-            case VarCtl::ValueType::Int:
+            // ---------------------------------------------------------------
+            // INT
+            // ---------------------------------------------------------------
+
+            if (type == VarCtl::ValueType::Int)
             {
                 int target =
                     enabled
@@ -640,10 +768,14 @@ namespace
                     lastTargetInt = target;
                 }
 
-                break;
+                return;
             }
 
-            case VarCtl::ValueType::Bool:
+            // ---------------------------------------------------------------
+            // BOOL
+            // ---------------------------------------------------------------
+
+            if (type == VarCtl::ValueType::Bool)
             {
                 bool target =
                     enabled
@@ -656,8 +788,35 @@ namespace
                     lastTargetBool = target;
                 }
 
-                break;
+                return;
             }
+
+            // ---------------------------------------------------------------
+            // VECTOR3
+            // ---------------------------------------------------------------
+
+            if (type == VarCtl::ValueType::Vector3)
+            {
+                VarCtl::Vector3 target =
+                    enabled
+                    ? VarCtl::Vector3
+                {
+                    overrideVector3.x * multiplier,
+                    overrideVector3.y * multiplier,
+                    overrideVector3.z * multiplier
+                }
+                : originalVector3;
+
+                if (!SameVector3(
+                    target,
+                    lastTargetVector3
+                ))
+                {
+                    WriteVector3(target);
+                    lastTargetVector3 = target;
+                }
+
+                return;
             }
         }
 
@@ -688,6 +847,10 @@ namespace
                 case VarCtl::ValueType::Bool:
                     WriteBool(originalBool);
                     break;
+
+                case VarCtl::ValueType::Vector3:
+                    WriteVector3(originalVector3);
+                    break;
                 }
             }
 
@@ -707,35 +870,129 @@ namespace
 
 
     // ========================================================================
-    // CONTROLLER LIST
-    // ========================================================================
+    // CONTROLLERS
     //
-    // Layout:
+    // Entry layout:
     //
-    // {
-    //     display name,
-    //     IL2CPP field name,
-    //     type,
-    //     multiplier,
-    //     float override,
-    //     int override,
-    //     bool override,
-    //     lower limit,
-    //     upper limit,
+    //     display name
+    //     field name
+    //     value type
+    //     multiplier
+    //     float override
+    //     int override
+    //     bool override
+    //     vector3 override
+    //     lower limit
+    //     upper limit
     //     show slider
-    // }
+    //
+    // For the type you're NOT using, leave its storage at:
+    //
+    //     float  = 0.0f
+    //     int    = 0
+    //     bool   = false
+    //     vector = { 0, 0, 0 }
     //
     // ========================================================================
 
     Controller g_controllers[] =
-    {//    displayName                 fieldName         Var Type                   mult  override lower  upper    slider
-        { "Camera Distance",           "distance",       VarCtl::ValueType::Float,  1.0f,  10.0f,  -1.0f, 50.0f,   true }, 
-        { "Camera Rotation Speed",     "rotateSpeed",    VarCtl::ValueType::Float,  1.0f,  10.0f,  0.0f,  360.0f,  true }, 
-        { "Camera Rotation ",          "yAngle",         VarCtl::ValueType::Float,  1.0f,  10.0f,  0.0f,  360.0f,  true }, 
-        { "Stop Camera",               "speed",          VarCtl::ValueType::Float,  1.0f,  0.0f,   0.0f,  360.0f,  false}, 
-        { "Move Speed",                "moveSpeed",      VarCtl::ValueType::Float,  1.0f,  10.0f,  0.0f,  20.0f,   true }, 
-        { "Ski Drag",                  "skiDrag",        VarCtl::ValueType::Float,  1.0f,  10.0f,  0.0f,  5000.0f, true }, 
-        { "Enable Ski Drag",           "enableDrag",     VarCtl::ValueType::Float,  1.0f,  10.0f,  0.0f,  5000.0f, false}
+    {
+        // Float
+        {
+            "Camera Distance",
+            "distance",
+            VarCtl::ValueType::Float,
+            1.0f,
+            10.0f,
+            0,
+            false,
+            { 0.0f, 0.0f, 0.0f },
+            -1.0f,
+            50.0f,
+            true
+        },
+
+        // Float
+        {
+            "Camera Rotation Speed",
+            "rotateSpeed",
+            VarCtl::ValueType::Float,
+            1.0f,
+            10.0f,
+            0,
+            false,
+            { 0.0f, 0.0f, 0.0f },
+            0.0f,
+            360.0f,
+            true
+        },
+
+        // Float
+        {
+            "Camera Rotation",
+            "yAngle",
+            VarCtl::ValueType::Float,
+            1.0f,
+            10.0f,
+            0,
+            false,
+            { 0.0f, 0.0f, 0.0f },
+            0.0f,
+            360.0f,
+            true
+        },
+
+        // Float, no slider
+        {
+            "Stop Camera",
+            "speed",
+            VarCtl::ValueType::Float,
+            1.0f,
+            0.0f,
+            0,
+            false,
+            { 0.0f, 0.0f, 0.0f },
+            0.0f,
+            360.0f,
+            false
+        },
+
+        {
+            "Pop Skis",
+            "skiBreakForce",
+            VarCtl::ValueType::Vector3,
+            1.0f,
+            0.0f,
+            0,
+            false,
+            { 0.0f, 0.0f, 0.0f },  // X, Y, Z override
+            0.0f,
+            100.0f,
+            false   
+        },
+
+
+
+
+        // --------------------------------------------------------------------
+        // Vector3 example
+        //
+        // Uncomment / edit this when you have a real Vector3 field.
+        // --------------------------------------------------------------------
+        //
+        // {
+        //     "Camera Position",
+        //     "position",
+        //     VarCtl::ValueType::Vector3,
+        //     1.0f,
+        //     0.0f,
+        //     0,
+        //     false,
+        //     { 0.0f, 0.0f, 0.0f },
+        //     -100.0f,
+        //     100.0f,
+        //     true
+        // }
     };
 
     constexpr size_t g_controllerCount =
@@ -745,7 +1002,7 @@ namespace
 
 
 // ============================================================================
-// PUBLIC VarCtl API
+// PUBLIC API
 // ============================================================================
 
 namespace VarCtl
@@ -876,12 +1133,15 @@ namespace VarCtl
     }
 
 
-    void SetOverrideValueAt(size_t index, float value)
+    void SetOverrideValueAt(
+        size_t index,
+        float value)
     {
         if (index >= g_controllerCount)
             return;
 
-        g_controllers[index].overrideFloat = value;
+        g_controllers[index].overrideFloat =
+            value;
     }
 
 
@@ -907,12 +1167,15 @@ namespace VarCtl
     }
 
 
-    void SetOverrideIntAt(size_t index, int value)
+    void SetOverrideIntAt(
+        size_t index,
+        int value)
     {
         if (index >= g_controllerCount)
             return;
 
-        g_controllers[index].overrideInt = value;
+        g_controllers[index].overrideInt =
+            value;
     }
 
 
@@ -938,12 +1201,49 @@ namespace VarCtl
     }
 
 
-    void SetOverrideBoolAt(size_t index, bool value)
+    void SetOverrideBoolAt(
+        size_t index,
+        bool value)
     {
         if (index >= g_controllerCount)
             return;
 
-        g_controllers[index].overrideBool = value;
+        g_controllers[index].overrideBool =
+            value;
+    }
+
+
+    // ========================================================================
+    // VECTOR3
+    // ========================================================================
+
+    Vector3 OverrideVector3At(size_t index)
+    {
+        if (index >= g_controllerCount)
+            return { 0.0f, 0.0f, 0.0f };
+
+        return g_controllers[index].overrideVector3;
+    }
+
+
+    void SetOverrideVector3At(
+        size_t index,
+        Vector3 value)
+    {
+        if (index >= g_controllerCount)
+            return;
+
+        g_controllers[index].overrideVector3 =
+            value;
+    }
+
+
+    float* OverrideVector3PtrAt(size_t index)
+    {
+        if (index >= g_controllerCount)
+            return nullptr;
+
+        return &g_controllers[index].overrideVector3.x;
     }
 
 
@@ -997,6 +1297,15 @@ namespace VarCtl
             return false;
 
         return g_controllers[index].ReadBool();
+    }
+
+
+    Vector3 CurrentVector3At(size_t index)
+    {
+        if (index >= g_controllerCount)
+            return { 0.0f, 0.0f, 0.0f };
+
+        return g_controllers[index].ReadVector3();
     }
 
 
