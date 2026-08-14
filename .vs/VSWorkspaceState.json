@@ -7,8 +7,9 @@
   },
   "ExpandedNodes": [
     "",
+    "\\build",
     "\\src"
   ],
-  "SelectedNode": "\\src\\Main.cpp",
+  "SelectedNode": "\\src\\VarCtl.cpp",
   "PreviewInSolutionExplorer": false
 }

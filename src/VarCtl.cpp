@@ -177,6 +177,7 @@ namespace
         float overrideValue;
         float lowerLimit;
         float upperLimit;
+        bool showSlider;
 
         // ---- runtime state: leave alone ----
         std::atomic<bool> active{ false };
@@ -293,11 +294,13 @@ namespace
     // This also absorbs what used to live in Main.h/Main.cpp (display name,
     // field name, and slider limits) -- one file, one place, one line.
     // ========================================================================
-    //                displayName              fieldName      mult  override  lower  upper
+    //                displayName              fieldName      mult  override  lower  upper  slider
     Controller g_controllers[] =
     {
-        { "Camera Distance",       "distance",     2.0f,  10.0f,  -1.0f,  50.0f },
-        { "Camera Rotation Speed", "rotateSpeed",  2.0f,  10.0f,   0.0f, 360.0f },
+        { "Camera Distance",                  "distance",     1.0f,  10.0f,  -1.0f,  50.0f, true },
+        { "Camera Rotation Speed",            "rotateSpeed",  1.0f,  10.0f,   0.0f, 360.0f, true },
+        { "Camera Rotation ",                 "yAngle",       1.0f,  10.0f,   0.0f, 360.0f, true },
+        { "Stop Camera",                      "speed",        1.0f,  0.0f,    0.0f, 360.0f, false }
 
         // Example of adding a third one -- just uncomment/edit and rebuild,
         // nothing else in this file or the header needs to change:
@@ -407,5 +410,10 @@ namespace VarCtl
     float CurrentValueAt(size_t index)
     {
         return g_controllers[index].Read();
+    }
+
+    bool ShowSliderAt(size_t index)
+    {
+        return g_controllers[index].showSlider;
     }
 }

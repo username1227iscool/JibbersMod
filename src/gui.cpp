@@ -301,15 +301,17 @@ namespace
                 }
 
 
-                ImGui::SetNextItemWidth(160.0f);
+                if (VarCtl::ShowSliderAt(i))
+                {
+                    ImGui::SetNextItemWidth(160.0f);
 
-
-                ImGui::SliderFloat(
-                    name,
-                    VarCtl::OverridePtrAt(i),
-                    VarCtl::LowerLimitAt(i),
-                    VarCtl::UpperLimitAt(i)
-                );
+                    ImGui::SliderFloat(
+                        name,
+                        VarCtl::OverridePtrAt(i),
+                        VarCtl::LowerLimitAt(i),
+                        VarCtl::UpperLimitAt(i)
+                    );
+                }
             }
 
 

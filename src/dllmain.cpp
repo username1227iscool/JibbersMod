@@ -1,6 +1,6 @@
 #include "gui.h"
 #include "overlay.h"
-#include "BreakTorque.h"
+#include "VarCtl.h"
 #include "controller.h"
 
 #include <windows.h>
@@ -14,8 +14,7 @@ namespace
 
         Overlay::Start(Gui::Frame);
 
-        CamDistCtl::Init();
-        CamRotCtl::Init();
+        VarCtl::Init();
         return 0;
     }
 }

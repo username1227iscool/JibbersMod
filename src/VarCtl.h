@@ -43,4 +43,6 @@ namespace VarCtl
 
     // Live read of whatever the field currently holds in-game.
     float CurrentValueAt(size_t index);
+
+    bool ShowSliderAt(size_t index);
 }
