@@ -13,14 +13,17 @@ set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 find_package(imgui CONFIG REQUIRED)
 
 add_library(Jummpers SHARED
-    src/dllmain.cpp
-    src/overlay.cpp
-    src/gui.cpp
-    src/controller.cpp
-    src/il2cpp_api.cpp
     src/Main.cpp
-    src/VarCtl.cpp
-    src/Eventhooks.cpp
+    src/Backend/dllmain.cpp
+    src/Backend/controller.cpp
+    src/Backend/il2cpp_api.cpp
+    src/Gui/overlay.cpp
+    src/Gui/gui.cpp
+    src/Event/Eventhooks.cpp
+    src/VarCtl/VarCtl.cpp
+    src/VarCtl/VarCtlRuntime.cpp
+    src/VarCtl/VarCtlController.cpp
+    src/VarCtl/VarCtlUnity.cpp
     minhook/src/buffer.c
     minhook/src/hook.c
     minhook/src/trampoline.c

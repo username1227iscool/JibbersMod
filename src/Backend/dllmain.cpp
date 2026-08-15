@@ -1,8 +1,8 @@
 #include "Gui/gui.h"
 #include "Gui/overlay.h"
-#include "VarCtl.h"
+#include "VarCtl/VarCtl.h"
 #include "controller.h"
-#include "EventHooks.h"
+#include "Event/EventHooks.h"
 
 #include <windows.h>
 #include "MinHook.h"

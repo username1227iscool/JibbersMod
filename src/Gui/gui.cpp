@@ -1,7 +1,10 @@
 #include "gui.h"
 #include "overlay.h"
-#include "VarCtl.h"
-#include "controller.h"
+#include "VarCtl/VarCtl.h"
+#include "VarCtl/VarCtlController.h"
+#include "VarCtl/VarCtlRuntime.h"
+#include "VarCtl/VarCtlUnity.h"
+#include "Backend/controller.h"
 
 #include <windows.h>
 #include <cstdio>

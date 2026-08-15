@@ -1,6 +1,9 @@
 #pragma once
 
-#include "VarCtl.h"
+#include "VarCtl/VarCtl.h"
+#include "VarCtl/VarCtlController.h"
+#include "VarCtl/VarCtlRuntime.h"
+#include "VarCtl/VarCtlUnity.h"
 
 #include <cstddef>
 
