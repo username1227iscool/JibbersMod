@@ -4,6 +4,6 @@ cmake -B build -A x64 -DCMAKE_TOOLCHAIN_FILE=C:\dev\vcpkg\scripts\buildsystems\v
 
 cmake --build build --config Debug
 
-cd ..\..\build\Debug
+cd build\Debug
 
 .\inject.exe

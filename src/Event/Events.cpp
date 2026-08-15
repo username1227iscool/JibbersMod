@@ -5,86 +5,48 @@
 #include <windows.h>
 #include <cstdio>
 
-// ============================================================================
-// EVENT CALLBACKS
-// ============================================================================
-//
-// Put the code you want to execute when each event happens here.
-//
-// ============================================================================
-
-
-
-// ----------------------------------------------------------------------------
-// Example event with no arguments
-//
-// C#:
-//     void SomeEvent()
-// ----------------------------------------------------------------------------
-
-void OnClothManagerUpdate(
+void OnCustomContactFrictionAwake(
     void* self,
     void** args,
     std::size_t argCount)
 {
-    OutputDebugStringA(
-        "[Events] ClothManager.Update detected!\n"
-    );
-
-    // ============================================================
-    // YOUR CODE HERE
-    // ============================================================
-
-    std::printf("Cloth update");
+    std::printf("[Event] CustomContactFriction.Awake fired!\n");
+    fflush(stdout);
 
     (void)self;
     (void)args;
     (void)argCount;
 }
 
-// ============================================================================
-// EVENT DEFINITIONS
-// ============================================================================
-
-namespace Events
+namespace Events// EVENT DEFINITIONS
 {
     bool Init()
     {
         if (!EventHooks::Init())
             return false;
 
-        // ================================================================
-        // ClothManager.Update
-        // ================================================================
+        EventHooks::EventDefinition customContactFriction{};// ClothManager.Update
 
-        EventHooks::EventDefinition clothUpdate{};
+        customContactFriction.name = "CustomContactFriction.Awake";
+        customContactFriction.namespaceName = "";
+        customContactFriction.className = "CustomContactFriction";
+        customContactFriction.methodName = "Awake";
+        customContactFriction.argumentCount = 0;
+        customContactFriction.callback = &OnCustomContactFrictionAwake;
 
-        clothUpdate.name =
-            "ClothManager.Update";
+        if (!EventHooks::RegisterEvent(customContactFriction))
+        {
+            std::printf("[Event] FAILED to hook CustomContactFriction.Awake!\n");
+            std::fflush(stdout);
 
-        clothUpdate.namespaceName =
-            "";
-
-        clothUpdate.className =
-            "ClothManager";
-
-        clothUpdate.methodName =
-            "Update";
-
-        clothUpdate.argumentCount =
-            0;
-
-        clothUpdate.callback =
-            &OnClothManagerUpdate;
-
-        if (!EventHooks::RegisterEvent(clothUpdate))
             return false;
+        }
+
+        std::printf("[Event] Hooked CustomContactFriction.Awake\n");
+        std::fflush(stdout);
 
         return true;
-    }
 
-    void Shutdown()
-    {
-        EventHooks::Shutdown();
     }
+    void Shutdown(){EventHooks::Shutdown();}
 }
