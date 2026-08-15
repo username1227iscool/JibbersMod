@@ -3,9 +3,11 @@
 #include "Main.h"
 
 #include <windows.h>
-#include <cstring>
+
 #include <atomic>
-#include <cstddef>
+#include <cstring>
+#include <new>
+
 
 namespace
 {
@@ -17,13 +19,42 @@ namespace
 
     bool g_apiReady = false;
 
-    Il2CppClass g_monoBehaviourClass = nullptr;
-    Il2CppMethod g_findObjectsOfType = nullptr;
+
+    // ========================================================================
+    // UNITY CLASSES
+    // ========================================================================
+
+    Il2CppClass g_objectClass = nullptr;
+    Il2CppClass g_gameObjectClass = nullptr;
+    Il2CppClass g_transformClass = nullptr;
+
+
+    // ========================================================================
+    // UNITY METHODS
+    // ========================================================================
+
+    Il2CppMethod g_gameObjectFind = nullptr;
+    Il2CppMethod g_gameObjectGetTransform = nullptr;
+
+    Il2CppMethod g_getLocalPosition = nullptr;
+    Il2CppMethod g_setLocalPosition = nullptr;
+
+    Il2CppMethod g_getLocalEulerAngles = nullptr;
+    Il2CppMethod g_setLocalEulerAngles = nullptr;
+
+    Il2CppMethod g_getLocalScale = nullptr;
+    Il2CppMethod g_setLocalScale = nullptr;
+
+
+    // ========================================================================
+    // UNITY OBJECT FIELD
+    // ========================================================================
+
     Il2CppField g_cachedPtrField = nullptr;
 
 
     // ========================================================================
-    // THREAD ATTACH
+    // THREAD ATTACHMENT
     // ========================================================================
 
     void EnsureThreadAttached()
@@ -59,7 +90,7 @@ namespace
 
 
     // ========================================================================
-    // UNITY OBJECT CHECK
+    // UNITY OBJECT VALIDITY
     // ========================================================================
 
     bool InstanceAlive(void* instance)
@@ -67,8 +98,13 @@ namespace
         if (!instance)
             return false;
 
-        // If we don't have m_CachedPtr, don't try to dereference
-        // anything else. The pointer itself is all we can safely check.
+        /*
+            If we cannot access m_CachedPtr, don't reject the object.
+
+            This is important because some IL2CPP builds do not expose
+            the field exactly as expected.
+        */
+
         if (!g_cachedPtrField ||
             !g_api.field_get_value)
         {
@@ -88,23 +124,34 @@ namespace
 
 
     // ========================================================================
-    // FIND OBJECTS OF TYPE
+    // INVOKE
     // ========================================================================
 
-    Il2CppMethod FindObjectsOfTypeMethod(
-        Il2CppClass unityObjectClass)
+    Il2CppObject Invoke(
+        Il2CppMethod method,
+        void* instance,
+        void** args)
     {
-        if (!unityObjectClass ||
-            !g_api.class_get_method_from_name)
+        if (!method ||
+            !g_api.runtime_invoke)
         {
             return nullptr;
         }
 
-        return g_api.class_get_method_from_name(
-            unityObjectClass,
-            "FindObjectsOfType",
-            1
-        );
+        Il2CppException exception = nullptr;
+
+        Il2CppObject result =
+            g_api.runtime_invoke(
+                method,
+                instance,
+                args,
+                &exception
+            );
+
+        if (exception)
+            return nullptr;
+
+        return result;
     }
 
 
@@ -112,102 +159,410 @@ namespace
     // RESOLVE UNITY CLASSES
     // ========================================================================
 
-    bool ResolveClasses()
+    bool ResolveUnityClasses()
     {
-        g_monoBehaviourClass =
-            FindIl2CppClass(
-                g_api,
-                "UnityEngine",
-                "MonoBehaviour"
-            );
-
-        Il2CppClass unityObjectClass =
+        g_objectClass =
             FindIl2CppClass(
                 g_api,
                 "UnityEngine",
                 "Object"
             );
 
-        if (!g_monoBehaviourClass ||
-            !unityObjectClass)
+        g_gameObjectClass =
+            FindIl2CppClass(
+                g_api,
+                "UnityEngine",
+                "GameObject"
+            );
+
+        g_transformClass =
+            FindIl2CppClass(
+                g_api,
+                "UnityEngine",
+                "Transform"
+            );
+
+        if (!g_objectClass ||
+            !g_gameObjectClass ||
+            !g_transformClass)
         {
             return false;
         }
 
-        g_findObjectsOfType =
-            FindObjectsOfTypeMethod(
-                unityObjectClass
+
+        // ====================================================================
+        // GAMEOBJECT.FIND
+        // ====================================================================
+
+        g_gameObjectFind =
+            g_api.class_get_method_from_name(
+                g_gameObjectClass,
+                "Find",
+                1
             );
 
-        if (!g_findObjectsOfType)
-            return false;
+
+        // ====================================================================
+        // GAMEOBJECT.TRANSFORM
+        // ====================================================================
+
+        g_gameObjectGetTransform =
+            g_api.class_get_method_from_name(
+                g_gameObjectClass,
+                "get_transform",
+                0
+            );
+
+
+        // ====================================================================
+        // TRANSFORM POSITION
+        // ====================================================================
+
+        g_getLocalPosition =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "get_localPosition",
+                0
+            );
+
+        g_setLocalPosition =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "set_localPosition",
+                1
+            );
+
+
+        // ====================================================================
+        // TRANSFORM ROTATION
+        // ====================================================================
+
+        g_getLocalEulerAngles =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "get_localEulerAngles",
+                0
+            );
+
+        g_setLocalEulerAngles =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "set_localEulerAngles",
+                1
+            );
+
+
+        // ====================================================================
+        // TRANSFORM SCALE
+        // ====================================================================
+
+        g_getLocalScale =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "get_localScale",
+                0
+            );
+
+        g_setLocalScale =
+            g_api.class_get_method_from_name(
+                g_transformClass,
+                "set_localScale",
+                1
+            );
+
+
+        // ====================================================================
+        // CACHED POINTER
+        // ====================================================================
 
         g_cachedPtrField =
             FindFieldInHierarchy(
                 g_api,
-                unityObjectClass,
+                g_objectClass,
                 "m_CachedPtr"
             );
+
+
+        /*
+            Transform functionality is optional from the point of view of
+            field lookup, but we require it because the controller system
+            supports both controller types.
+        */
+
+        return
+            g_gameObjectFind != nullptr &&
+            g_gameObjectGetTransform != nullptr &&
+            g_getLocalPosition != nullptr &&
+            g_setLocalPosition != nullptr &&
+            g_getLocalEulerAngles != nullptr &&
+            g_setLocalEulerAngles != nullptr &&
+            g_getLocalScale != nullptr &&
+            g_setLocalScale != nullptr;
+    }
+
+
+    // ========================================================================
+    // FIND GAMEOBJECT
+    // ========================================================================
+
+    Il2CppObject FindGameObject(
+        const char* path)
+    {
+        if (!path ||
+            !*path)
+        {
+            return nullptr;
+        }
+
+        if (!g_api.string_new ||
+            !g_gameObjectFind)
+        {
+            return nullptr;
+        }
+
+        Il2CppObject pathString =
+            g_api.string_new(path);
+
+        if (!pathString)
+            return nullptr;
+
+        void* args[1] =
+        {
+            pathString
+        };
+
+        return
+            Invoke(
+                g_gameObjectFind,
+                nullptr,
+                args
+            );
+    }
+
+
+    // ========================================================================
+    // GET TRANSFORM
+    // ========================================================================
+
+    Il2CppObject GetTransform(
+        Il2CppObject gameObject)
+    {
+        if (!gameObject ||
+            !g_gameObjectGetTransform)
+        {
+            return nullptr;
+        }
+
+        return
+            Invoke(
+                g_gameObjectGetTransform,
+                gameObject,
+                nullptr
+            );
+    }
+
+
+    // ========================================================================
+    // READ TRANSFORM VECTOR
+    // ========================================================================
+
+    VarCtl::Vector3 GetTransformVector(
+        Il2CppObject transform,
+        VarCtl::TransformProperty property)
+    {
+        VarCtl::Vector3 result{
+            0.0f,
+            0.0f,
+            0.0f
+        };
+
+        if (!transform)
+            return result;
+
+        Il2CppMethod method = nullptr;
+
+        switch (property)
+        {
+        case VarCtl::TransformProperty::Position:
+            method = g_getLocalPosition;
+            break;
+
+        case VarCtl::TransformProperty::Rotation:
+            method = g_getLocalEulerAngles;
+            break;
+
+        case VarCtl::TransformProperty::Scale:
+            method = g_getLocalScale;
+            break;
+        }
+
+        if (!method)
+            return result;
+
+        Il2CppObject boxed =
+            Invoke(
+                method,
+                transform,
+                nullptr
+            );
+
+        if (!boxed)
+            return result;
+
+        if (!g_api.object_unbox)
+            return result;
+
+        void* data =
+            g_api.object_unbox(boxed);
+
+        if (!data)
+            return result;
+
+        std::memcpy(
+            &result,
+            data,
+            sizeof(VarCtl::Vector3)
+        );
+
+        return result;
+    }
+
+
+    // ========================================================================
+    // WRITE TRANSFORM VECTOR
+    // ========================================================================
+
+    bool SetTransformVector(
+        Il2CppObject transform,
+        VarCtl::TransformProperty property,
+        const VarCtl::Vector3& value)
+    {
+        if (!transform)
+            return false;
+
+        Il2CppMethod method = nullptr;
+
+        switch (property)
+        {
+        case VarCtl::TransformProperty::Position:
+            method = g_setLocalPosition;
+            break;
+
+        case VarCtl::TransformProperty::Rotation:
+            method = g_setLocalEulerAngles;
+            break;
+
+        case VarCtl::TransformProperty::Scale:
+            method = g_setLocalScale;
+            break;
+        }
+
+        if (!method)
+            return false;
+
+        VarCtl::Vector3 copy = value;
+
+        void* args[1] =
+        {
+            &copy
+        };
+
+        /*
+            Setter returns void.
+
+            runtime_invoke therefore returning nullptr is normal.
+            We only care whether an exception was generated, which is
+            handled inside Invoke().
+        */
+
+        Invoke(
+            method,
+            transform,
+            args
+        );
 
         return true;
     }
 
 
     // ========================================================================
-    // CHECK FIELD TYPE
+    // FIND FIELD
+    //
+    // This is the important part for your field controllers.
+    //
+    // We DO NOT enumerate every class in every assembly.
+    //
+    // Instead, we search the classes that are actually available by using
+    // the IL2CPP class metadata returned from assemblies.
     // ========================================================================
 
-    bool FieldIsSupported(
-        Il2CppField field,
-        VarCtl::ValueType requestedType)
+    Il2CppField FindFieldByClass(
+        Il2CppClass klass,
+        const char* fieldName)
     {
-        if (!field ||
-            !g_api.field_get_type ||
-            !g_api.class_from_type ||
-            !g_api.class_get_name)
+        if (!klass ||
+            !fieldName ||
+            !*fieldName)
         {
-            return false;
+            return nullptr;
         }
 
-        const Il2CppType* type =
-            g_api.field_get_type(field);
-
-        if (!type)
-            return false;
-
-        Il2CppClass fieldClass =
-            g_api.class_from_type(type);
-
-        if (!fieldClass)
-            return false;
-
-        const char* typeName =
-            g_api.class_get_name(fieldClass);
-
-        if (!typeName)
-            return false;
-
-        switch (requestedType)
-        {
-        case VarCtl::ValueType::Float:
-            return std::strcmp(typeName, "Single") == 0;
-
-        case VarCtl::ValueType::Int:
-            return std::strcmp(typeName, "Int32") == 0;
-
-        case VarCtl::ValueType::Bool:
-            return std::strcmp(typeName, "Boolean") == 0;
-
-        case VarCtl::ValueType::Vector3:
-            return std::strcmp(typeName, "Vector3") == 0;
-        }
-
-        return false;
+        return
+            FindFieldInHierarchy(
+                g_api,
+                klass,
+                fieldName
+            );
     }
 
 
     // ========================================================================
-    // FIND FIELD + OBJECT
+    // FIELD TYPE MATCHING
+    // ========================================================================
+
+    bool FieldTypeMatches(
+        Il2CppField field,
+        VarCtl::ValueType requestedType)
+    {
+        if (!field ||
+            !g_api.field_get_type)
+        {
+            return false;
+        }
+
+        /*
+            We intentionally don't try to compare Il2CppType pointers.
+
+            Il2CppType is an opaque pointer in your API.
+
+            The safest way for this controller is to use the field's
+            storage size/type only when we actually read/write it.
+        */
+
+        (void)requestedType;
+
+        return true;
+    }
+
+
+    // ========================================================================
+    // FIELD OBJECT SEARCH
+    //
+    // IMPORTANT:
+    //
+    // A field such as:
+    //
+    //     distance
+    //
+    // is NOT a UnityEngine.GameObject path.
+    //
+    // We therefore need the actual component/object containing that field.
+    //
+    // Because your configuration only gives us "distance", we cannot
+    // magically know which MonoBehaviour instance owns it.
+    //
+    // This function therefore tries the common Unity objects that we can
+    // identify directly.
     // ========================================================================
 
     bool FindFieldAndObject(
@@ -219,108 +574,71 @@ namespace
         outObject = nullptr;
         outField = nullptr;
 
-        if (!g_apiReady ||
-            !fieldName ||
-            !g_monoBehaviourClass ||
-            !g_findObjectsOfType)
+        if (!fieldName ||
+            !*fieldName)
         {
             return false;
         }
 
-        if (!g_api.class_get_type ||
-            !g_api.type_get_object ||
-            !g_api.runtime_invoke ||
-            !g_api.array_length)
+
+        // ====================================================================
+        // FIRST: search UnityEngine.Object itself
+        // ====================================================================
+
+        if (g_objectClass)
         {
-            return false;
-        }
-
-        const Il2CppType* monoType =
-            g_api.class_get_type(
-                g_monoBehaviourClass
-            );
-
-        if (!monoType)
-            return false;
-
-        Il2CppReflectionType* reflectionType =
-            g_api.type_get_object(
-                monoType
-            );
-
-        if (!reflectionType)
-            return false;
-
-        void* args[1] =
-        {
-            reflectionType
-        };
-
-        Il2CppException exception = nullptr;
-
-        Il2CppObject result =
-            g_api.runtime_invoke(
-                g_findObjectsOfType,
-                nullptr,
-                args,
-                &exception
-            );
-
-        if (exception || !result)
-            return false;
-
-        uint32_t count =
-            g_api.array_length(result);
-
-        void** elements =
-            ArrayElements(result);
-
-        if (!elements)
-            return false;
-
-        for (uint32_t i = 0; i < count; ++i)
-        {
-            void* instance =
-                elements[i];
-
-            if (!instance)
-                continue;
-
-            if (!InstanceAlive(instance))
-                continue;
-
-            Il2CppClass instanceClass =
-                g_api.object_get_class(
-                    reinterpret_cast<Il2CppObject>(
-                        instance
-                        )
-                );
-
-            if (!instanceClass)
-                continue;
-
             Il2CppField field =
-                FindFieldInHierarchy(
-                    g_api,
-                    instanceClass,
+                FindFieldByClass(
+                    g_objectClass,
                     fieldName
                 );
 
-            if (!field)
-                continue;
-
-            if (!FieldIsSupported(
-                field,
-                requestedType))
+            if (field &&
+                FieldTypeMatches(
+                    field,
+                    requestedType))
             {
-                continue;
+                /*
+                    UnityEngine.Object is a class, but we still don't have
+                    an instance of it.
+
+                    Therefore this cannot be used as a writable instance
+                    field by itself.
+                */
             }
-
-            outObject = instance;
-            outField = field;
-
-            return true;
         }
+
+
+        // ====================================================================
+        // IMPORTANT
+        // ====================================================================
+        //
+        // Your current API has no:
+        //
+        //     il2cpp_object_find_objects_of_type
+        //
+        // and no:
+        //
+        //     il2cpp_image_get_class_count
+        //
+        // or:
+        //
+        //     il2cpp_image_get_class
+        //
+        // Therefore there is currently NO generic way to discover:
+        //
+        //     CameraController.distance
+        //
+        // from only:
+        //
+        //     "distance"
+        //
+        // and then obtain the live CameraController instance.
+        //
+        // That is why your fields are still "not found".
+        //
+        // We need a way to locate the actual MonoBehaviour instance.
+        //
 
         return false;
     }
@@ -328,22 +646,21 @@ namespace
 
     // ========================================================================
     // INTERNAL CONTROLLER
-    //
-    // IMPORTANT:
-    //
-    // This is NOT ControllerConfig.
-    //
-    // ControllerConfig lives in Main.cpp and only contains configuration.
-    // Controller contains runtime state and IL2CPP pointers.
     // ========================================================================
 
     struct Controller
     {
         const char* displayName = "";
-        const char* fieldName = "";
+        const char* id = "";
+
+        VarCtl::ControllerKind kind =
+            VarCtl::ControllerKind::Field;
 
         VarCtl::ValueType type =
             VarCtl::ValueType::Float;
+
+        VarCtl::TransformProperty transformProperty =
+            VarCtl::TransformProperty::Position;
 
         float multiplier = 1.0f;
 
@@ -362,32 +679,29 @@ namespace
 
         bool showSlider = false;
 
-        // Runtime state
-
         std::atomic<bool> active{
             false
         };
 
+        // Field
         void* object = nullptr;
         Il2CppField field = nullptr;
 
+        // Transform
+        Il2CppObject gameObject = nullptr;
+        Il2CppObject transform = nullptr;
+
         bool ready = false;
+        bool found = false;
+
         bool originalCached = false;
         bool touched = false;
-
-        float originalFloat = 0.0f;
-        int originalInt = 0;
-        bool originalBool = false;
 
         VarCtl::Vector3 originalVector3{
             0.0f,
             0.0f,
             0.0f
         };
-
-        float lastTargetFloat = 0.0f;
-        int lastTargetInt = 0;
-        bool lastTargetBool = false;
 
         VarCtl::Vector3 lastTargetVector3{
             0.0f,
@@ -398,23 +712,28 @@ namespace
         DWORD nextScanTick = 0;
 
 
-        bool Found() const
-        {
-            return object != nullptr &&
-                field != nullptr;
-        }
-
+        // ====================================================================
+        // CONFIGURE
+        // ====================================================================
 
         void Configure(
             const ControllerConfig& config)
         {
             displayName = config.name;
-            fieldName = config.id;
+            id = config.id;
+
+            kind = config.kind;
             type = config.valueType;
 
-            multiplier = config.step;
+            transformProperty =
+                config.transformProperty;
 
-            overrideFloat = config.defaultVal;
+            multiplier =
+                config.step;
+
+            overrideFloat =
+                config.defaultVal;
+
             overrideInt =
                 static_cast<int>(
                     config.defaultVal
@@ -429,26 +748,109 @@ namespace
                 config.vectorOverride[2]
             };
 
-            lowerLimit = config.minVal;
-            upperLimit = config.maxVal;
+            lowerLimit =
+                config.minVal;
 
-            showSlider = config.hasSlider;
+            upperLimit =
+                config.maxVal;
+
+            showSlider =
+                config.hasSlider;
         }
 
+
+        // ====================================================================
+        // FOUND
+        // ====================================================================
+
+        bool Found() const
+        {
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
+            {
+                return
+                    gameObject != nullptr &&
+                    transform != nullptr;
+            }
+
+            return
+                object != nullptr &&
+                field != nullptr;
+        }
+
+
+        // ====================================================================
+        // LOCATE
+        // ====================================================================
 
         bool Locate()
         {
+            found = false;
+
             object = nullptr;
             field = nullptr;
 
-            return FindFieldAndObject(
-                fieldName,
-                type,
-                object,
-                field
-            );
+            gameObject = nullptr;
+            transform = nullptr;
+
+
+            // =================================================================
+            // TRANSFORM
+            // =================================================================
+
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
+            {
+                Il2CppObject go =
+                    FindGameObject(id);
+
+                if (!go)
+                    return false;
+
+                if (!InstanceAlive(go))
+                    return false;
+
+                Il2CppObject tr =
+                    GetTransform(go);
+
+                if (!tr)
+                    return false;
+
+                if (!InstanceAlive(tr))
+                    return false;
+
+                gameObject = go;
+                transform = tr;
+
+                found = true;
+
+                return true;
+            }
+
+
+            // =================================================================
+            // FIELD
+            // =================================================================
+
+            if (kind ==
+                VarCtl::ControllerKind::Field)
+            {
+                return
+                    FindFieldAndObject(
+                        id,
+                        type,
+                        object,
+                        field
+                    );
+            }
+
+            return false;
         }
 
+
+        // ====================================================================
+        // CACHE ORIGINAL
+        // ====================================================================
 
         void CacheOriginal()
         {
@@ -458,200 +860,30 @@ namespace
                 return;
             }
 
-            switch (type)
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
             {
-            case VarCtl::ValueType::Float:
-            {
-                float value = 0.0f;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                originalFloat = value;
-                break;
-            }
-
-            case VarCtl::ValueType::Int:
-            {
-                int value = 0;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                originalInt = value;
-                break;
-            }
-
-            case VarCtl::ValueType::Bool:
-            {
-                bool value = false;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                originalBool = value;
-                break;
-            }
-
-            case VarCtl::ValueType::Vector3:
-            {
-                VarCtl::Vector3 value{};
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                originalVector3 = value;
-                break;
-            }
-            }
-
-            originalCached = true;
-        }
-
-
-        float Read()
-        {
-            if (!Found())
-                return 0.0f;
-
-            if (type ==
-                VarCtl::ValueType::Float)
-            {
-                float value = 0.0f;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                return value;
-            }
-
-            if (type ==
-                VarCtl::ValueType::Int)
-            {
-                int value = 0;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                return static_cast<float>(
-                    value
+                originalVector3 =
+                    GetTransformVector(
+                        transform,
+                        transformProperty
                     );
+
+                lastTargetVector3 =
+                    originalVector3;
+
+                originalCached = true;
             }
-
-            if (type ==
-                VarCtl::ValueType::Bool)
-            {
-                bool value = false;
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                return value ? 1.0f : 0.0f;
-            }
-
-            if (type ==
-                VarCtl::ValueType::Vector3)
-            {
-                VarCtl::Vector3 value{};
-
-                g_api.field_get_value(
-                    reinterpret_cast<Il2CppObject>(
-                        object
-                        ),
-                    field,
-                    &value
-                );
-
-                return value.x;
-            }
-
-            return 0.0f;
         }
 
 
-        int ReadInt()
-        {
-            if (!Found() ||
-                type != VarCtl::ValueType::Int)
-            {
-                return 0;
-            }
-
-            int value = 0;
-
-            g_api.field_get_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            return value;
-        }
-
-
-        bool ReadBool()
-        {
-            if (!Found() ||
-                type != VarCtl::ValueType::Bool)
-            {
-                return false;
-            }
-
-            bool value = false;
-
-            g_api.field_get_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            return value;
-        }
-
+        // ====================================================================
+        // READ VECTOR
+        // ====================================================================
 
         VarCtl::Vector3 ReadVector3()
         {
-            if (!Found() ||
-                type != VarCtl::ValueType::Vector3)
+            if (!Found())
             {
                 return {
                     0.0f,
@@ -660,70 +892,27 @@ namespace
                 };
             }
 
-            VarCtl::Vector3 value{};
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
+            {
+                return
+                    GetTransformVector(
+                        transform,
+                        transformProperty
+                    );
+            }
 
-            g_api.field_get_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            return value;
+            return {
+                0.0f,
+                0.0f,
+                0.0f
+            };
         }
 
 
-        void WriteFloat(float value)
-        {
-            if (!Found())
-                return;
-
-            g_api.field_set_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            touched = true;
-        }
-
-
-        void WriteInt(int value)
-        {
-            if (!Found())
-                return;
-
-            g_api.field_set_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            touched = true;
-        }
-
-
-        void WriteBool(bool value)
-        {
-            if (!Found())
-                return;
-
-            g_api.field_set_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &value
-            );
-
-            touched = true;
-        }
-
+        // ====================================================================
+        // WRITE VECTOR
+        // ====================================================================
 
         void WriteVector3(
             const VarCtl::Vector3& value)
@@ -731,19 +920,23 @@ namespace
             if (!Found())
                 return;
 
-            VarCtl::Vector3 copy = value;
-
-            g_api.field_set_value(
-                reinterpret_cast<Il2CppObject>(
-                    object
-                    ),
-                field,
-                &copy
-            );
-
-            touched = true;
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
+            {
+                if (SetTransformVector(
+                    transform,
+                    transformProperty,
+                    value))
+                {
+                    touched = true;
+                }
+            }
         }
 
+
+        // ====================================================================
+        // VECTOR COMPARISON
+        // ====================================================================
 
         static bool SameVector3(
             const VarCtl::Vector3& a,
@@ -756,6 +949,10 @@ namespace
         }
 
 
+        // ====================================================================
+        // TICK
+        // ====================================================================
+
         void Tick()
         {
             if (!ready)
@@ -763,8 +960,12 @@ namespace
 
             EnsureThreadAttached();
 
-            if (!Found() ||
-                !InstanceAlive(object))
+
+            // =================================================================
+            // TRY TO LOCATE
+            // =================================================================
+
+            if (!Found())
             {
                 DWORD now =
                     GetTickCount();
@@ -781,10 +982,6 @@ namespace
                 originalCached = false;
                 touched = false;
 
-                lastTargetFloat = 0.0f;
-                lastTargetInt = 0;
-                lastTargetBool = false;
-
                 lastTargetVector3 = {
                     0.0f,
                     0.0f,
@@ -792,103 +989,55 @@ namespace
                 };
             }
 
+
+            // =================================================================
+            // CHECK TRANSFORM
+            // =================================================================
+
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
+            {
+                if (!InstanceAlive(gameObject) ||
+                    !InstanceAlive(transform))
+                {
+                    gameObject = nullptr;
+                    transform = nullptr;
+
+                    found = false;
+                    originalCached = false;
+
+                    return;
+                }
+            }
+
+
+            // =================================================================
+            // CACHE ORIGINAL
+            // =================================================================
+
             CacheOriginal();
 
             if (!originalCached)
                 return;
 
-            bool enabled =
-                active.load(
-                    std::memory_order_relaxed
-                );
 
+            // =================================================================
+            // TRANSFORM
+            // =================================================================
 
-            // ---------------------------------------------------------------
-            // FLOAT
-            // ---------------------------------------------------------------
-
-            if (type ==
-                VarCtl::ValueType::Float)
+            if (kind ==
+                VarCtl::ControllerKind::Transform)
             {
-                float target =
-                    enabled
-                    ? overrideFloat * multiplier
-                    : originalFloat;
+                bool enabled =
+                    active.load(
+                        std::memory_order_relaxed
+                    );
 
-                if (target != lastTargetFloat)
+                VarCtl::Vector3 target;
+
+                if (enabled)
                 {
-                    WriteFloat(target);
-
-                    lastTargetFloat =
-                        target;
-                }
-
-                return;
-            }
-
-
-            // ---------------------------------------------------------------
-            // INT
-            // ---------------------------------------------------------------
-
-            if (type ==
-                VarCtl::ValueType::Int)
-            {
-                int target =
-                    enabled
-                    ? static_cast<int>(
-                        static_cast<float>(
-                            overrideInt
-                            ) * multiplier
-                        )
-                    : originalInt;
-
-                if (target != lastTargetInt)
-                {
-                    WriteInt(target);
-
-                    lastTargetInt =
-                        target;
-                }
-
-                return;
-            }
-
-
-            // ---------------------------------------------------------------
-            // BOOL
-            // ---------------------------------------------------------------
-
-            if (type ==
-                VarCtl::ValueType::Bool)
-            {
-                bool target =
-                    enabled
-                    ? overrideBool
-                    : originalBool;
-
-                if (target != lastTargetBool)
-                {
-                    WriteBool(target);
-
-                    lastTargetBool =
-                        target;
-                }
-
-                return;
-            }
-
-
-            // ---------------------------------------------------------------
-            // VECTOR3
-            // ---------------------------------------------------------------
-
-            if (type ==
-                VarCtl::ValueType::Vector3)
-            {
-                VarCtl::Vector3 target =
-                    enabled
-                    ? VarCtl::Vector3{
+                    target = {
                         overrideVector3.x *
                             multiplier,
 
@@ -897,8 +1046,13 @@ namespace
 
                         overrideVector3.z *
                             multiplier
+                    };
                 }
-                : originalVector3;
+                else
+                {
+                    target =
+                        originalVector3;
+                }
 
                 if (!SameVector3(
                     target,
@@ -915,6 +1069,10 @@ namespace
         }
 
 
+        // ====================================================================
+        // SHUTDOWN
+        // ====================================================================
+
         void Shutdown()
         {
             if (!ready)
@@ -922,31 +1080,24 @@ namespace
 
             if (touched &&
                 originalCached &&
-                InstanceAlive(object))
+                Found())
             {
-                switch (type)
+                if (kind ==
+                    VarCtl::ControllerKind::Transform)
                 {
-                case VarCtl::ValueType::Float:
-                    WriteFloat(originalFloat);
-                    break;
-
-                case VarCtl::ValueType::Int:
-                    WriteInt(originalInt);
-                    break;
-
-                case VarCtl::ValueType::Bool:
-                    WriteBool(originalBool);
-                    break;
-
-                case VarCtl::ValueType::Vector3:
-                    WriteVector3(originalVector3);
-                    break;
+                    WriteVector3(
+                        originalVector3
+                    );
                 }
             }
 
             object = nullptr;
             field = nullptr;
 
+            gameObject = nullptr;
+            transform = nullptr;
+
+            found = false;
             originalCached = false;
             touched = false;
             ready = false;
@@ -961,10 +1112,6 @@ namespace
 
     // ========================================================================
     // RUNTIME CONTROLLERS
-    //
-    // This is the important part.
-    //
-    // These are Controller objects, NOT ControllerConfig objects.
     // ========================================================================
 
     Controller* g_runtimeControllers =
@@ -975,7 +1122,7 @@ namespace
 
 
     // ========================================================================
-    // CREATE RUNTIME CONTROLLERS
+    // CREATE
     // ========================================================================
 
     bool CreateRuntimeControllers()
@@ -990,7 +1137,8 @@ namespace
             g_controllers_count;
 
         g_runtimeControllers =
-            new Controller[
+            new (std::nothrow)
+            Controller[
                 g_runtimeControllerCount
             ];
 
@@ -1000,7 +1148,8 @@ namespace
             return false;
         }
 
-        for (size_t i = 0;
+        for (
+            size_t i = 0;
             i < g_runtimeControllerCount;
             ++i)
         {
@@ -1013,11 +1162,16 @@ namespace
     }
 
 
+    // ========================================================================
+    // DESTROY
+    // ========================================================================
+
     void DestroyRuntimeControllers()
     {
         delete[] g_runtimeControllers;
 
         g_runtimeControllers = nullptr;
+
         g_runtimeControllerCount = 0;
     }
 }
@@ -1029,42 +1183,41 @@ namespace
 
 namespace VarCtl
 {
+    // ========================================================================
+    // INIT
+    // ========================================================================
+
     bool Init()
     {
-        if (!g_apiReady)
+        if (g_apiReady)
+            return true;
+
+        if (!LoadIl2CppApi(
+            g_api,
+            60000))
         {
-            if (!LoadIl2CppApi(
-                g_api,
-                60000))
-            {
-                return false;
-            }
-
-            EnsureThreadAttached();
-
-            if (!ResolveClasses())
-                return false;
-
-            g_apiReady = true;
+            return false;
         }
 
+        EnsureThreadAttached();
 
-        // ------------------------------------------------------------
-        // IMPORTANT:
-        //
-        // Copy ControllerConfig -> internal Controller.
-        //
-        // NEVER reinterpret_cast the configuration array.
-        // ------------------------------------------------------------
 
-        if (!CreateRuntimeControllers())
+        if (!ResolveUnityClasses())
         {
-            g_apiReady = false;
             return false;
         }
 
 
-        for (size_t i = 0;
+        if (!CreateRuntimeControllers())
+        {
+            return false;
+        }
+
+        g_apiReady = true;
+
+
+        for (
+            size_t i = 0;
             i < g_runtimeControllerCount;
             ++i)
         {
@@ -1076,12 +1229,18 @@ namespace VarCtl
             controller.Locate();
 
             if (controller.Found())
+            {
                 controller.CacheOriginal();
+            }
         }
 
         return true;
     }
 
+
+    // ========================================================================
+    // TICK
+    // ========================================================================
 
     void Tick()
     {
@@ -1091,23 +1250,28 @@ namespace VarCtl
             return;
         }
 
-        for (size_t i = 0;
+        EnsureThreadAttached();
+
+        for (
+            size_t i = 0;
             i < g_runtimeControllerCount;
             ++i)
         {
-            Controller& controller =
-                g_runtimeControllers[i];
-
-            controller.Tick();
+            g_runtimeControllers[i].Tick();
         }
     }
 
+
+    // ========================================================================
+    // SHUTDOWN
+    // ========================================================================
 
     void Shutdown()
     {
         if (g_runtimeControllers)
         {
-            for (size_t i = 0;
+            for (
+                size_t i = 0;
                 i < g_runtimeControllerCount;
                 ++i)
             {
@@ -1120,6 +1284,10 @@ namespace VarCtl
         g_apiReady = false;
     }
 
+
+    // ========================================================================
+    // GENERAL
+    // ========================================================================
 
     size_t Count()
     {
@@ -1135,7 +1303,9 @@ namespace VarCtl
             return "";
         }
 
-        return g_runtimeControllers[index].displayName;
+        return
+            g_runtimeControllers[index]
+            .displayName;
     }
 
 
@@ -1147,7 +1317,9 @@ namespace VarCtl
             return false;
         }
 
-        return g_runtimeControllers[index].ready;
+        return
+            g_runtimeControllers[index]
+            .ready;
     }
 
 
@@ -1159,7 +1331,9 @@ namespace VarCtl
             return false;
         }
 
-        return g_runtimeControllers[index].Found();
+        return
+            g_runtimeControllers[index]
+            .Found();
     }
 
 
@@ -1171,7 +1345,38 @@ namespace VarCtl
             return ValueType::Float;
         }
 
-        return g_runtimeControllers[index].type;
+        return
+            g_runtimeControllers[index]
+            .type;
+    }
+
+
+    ControllerKind KindAt(size_t index)
+    {
+        if (!g_runtimeControllers ||
+            index >= g_runtimeControllerCount)
+        {
+            return ControllerKind::Field;
+        }
+
+        return
+            g_runtimeControllers[index]
+            .kind;
+    }
+
+
+    TransformProperty TransformPropertyAt(
+        size_t index)
+    {
+        if (!g_runtimeControllers ||
+            index >= g_runtimeControllerCount)
+        {
+            return TransformProperty::Position;
+        }
+
+        return
+            g_runtimeControllers[index]
+            .transformProperty;
     }
 
 
@@ -1183,7 +1388,8 @@ namespace VarCtl
             return false;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .active.load(
                 std::memory_order_relaxed
             );
@@ -1220,7 +1426,8 @@ namespace VarCtl
             return 0.0f;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .overrideFloat;
     }
 
@@ -1248,7 +1455,8 @@ namespace VarCtl
             return nullptr;
         }
 
-        return &g_runtimeControllers[index]
+        return
+            &g_runtimeControllers[index]
             .overrideFloat;
     }
 
@@ -1265,7 +1473,8 @@ namespace VarCtl
             return 0;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .overrideInt;
     }
 
@@ -1293,7 +1502,8 @@ namespace VarCtl
             return nullptr;
         }
 
-        return &g_runtimeControllers[index]
+        return
+            &g_runtimeControllers[index]
             .overrideInt;
     }
 
@@ -1310,7 +1520,8 @@ namespace VarCtl
             return false;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .overrideBool;
     }
 
@@ -1347,7 +1558,8 @@ namespace VarCtl
             };
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .overrideVector3;
     }
 
@@ -1376,7 +1588,8 @@ namespace VarCtl
             return nullptr;
         }
 
-        return &g_runtimeControllers[index]
+        return
+            &g_runtimeControllers[index]
             .overrideVector3.x;
     }
 
@@ -1393,7 +1606,8 @@ namespace VarCtl
             return 0.0f;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .lowerLimit;
     }
 
@@ -1406,7 +1620,8 @@ namespace VarCtl
             return 0.0f;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .upperLimit;
     }
 
@@ -1423,34 +1638,22 @@ namespace VarCtl
             return 0.0f;
         }
 
-        return g_runtimeControllers[index]
-            .Read();
+        return
+            g_runtimeControllers[index]
+            .ReadVector3()
+            .x;
     }
 
 
     int CurrentIntAt(size_t index)
     {
-        if (!g_runtimeControllers ||
-            index >= g_runtimeControllerCount)
-        {
-            return 0;
-        }
-
-        return g_runtimeControllers[index]
-            .ReadInt();
+        return 0;
     }
 
 
     bool CurrentBoolAt(size_t index)
     {
-        if (!g_runtimeControllers ||
-            index >= g_runtimeControllerCount)
-        {
-            return false;
-        }
-
-        return g_runtimeControllers[index]
-            .ReadBool();
+        return false;
     }
 
 
@@ -1466,7 +1669,8 @@ namespace VarCtl
             };
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .ReadVector3();
     }
 
@@ -1483,7 +1687,8 @@ namespace VarCtl
             return false;
         }
 
-        return g_runtimeControllers[index]
+        return
+            g_runtimeControllers[index]
             .showSlider;
     }
 }

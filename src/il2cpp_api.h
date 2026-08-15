@@ -4,9 +4,14 @@
 #include <cstdint>
 #include <cstddef>
 
+
 // ============================================================================
-// IL2CPP TYPES
+// IL2CPP OPAQUE TYPES
 // ============================================================================
+//
+// These are intentionally opaque handles.
+// We use void* so the rest of the project does not need IL2CPP headers.
+//
 
 typedef void* Il2CppDomain;
 typedef void* Il2CppAssembly;
@@ -21,107 +26,145 @@ typedef void* Il2CppReflectionType;
 
 
 // ============================================================================
-// IL2CPP FUNCTION POINTERS
+// FUNCTION TYPES
 // ============================================================================
 
+// il2cpp_domain_get
 typedef Il2CppDomain(*PFN_domain_get)();
 
-typedef const Il2CppAssembly* (*PFN_domain_get_assemblies)(
-    Il2CppDomain,
-    size_t*
+
+// il2cpp_domain_get_assemblies
+//
+// IL2CPP returns an array of assembly pointers.
+// The returned array itself is not modified by us.
+//
+typedef const Il2CppAssembly** (*PFN_domain_get_assemblies)(
+    Il2CppDomain domain,
+    size_t* size
     );
 
+
+// il2cpp_assembly_get_image
 typedef Il2CppImage(*PFN_assembly_get_image)(
-    Il2CppAssembly
+    Il2CppAssembly assembly
     );
 
+
+// il2cpp_class_from_name
 typedef Il2CppClass(*PFN_class_from_name)(
-    Il2CppImage,
-    const char*,
-    const char*
+    Il2CppImage image,
+    const char* namespaze,
+    const char* name
     );
 
+
+// il2cpp_class_get_method_from_name
 typedef Il2CppMethod(*PFN_class_get_method_from_name)(
-    Il2CppClass,
-    const char*,
-    int
+    Il2CppClass klass,
+    const char* name,
+    int argsCount
     );
 
+
+// il2cpp_class_get_field_from_name
 typedef Il2CppField(*PFN_class_get_field_from_name)(
-    Il2CppClass,
-    const char*
+    Il2CppClass klass,
+    const char* name
     );
 
+
+// il2cpp_runtime_invoke
 typedef Il2CppObject(*PFN_runtime_invoke)(
-    Il2CppMethod,
-    void*,
-    void**,
-    Il2CppException*
+    Il2CppMethod method,
+    void* obj,
+    void** params,
+    Il2CppException* exc
     );
 
+
+// il2cpp_object_unbox
 typedef void* (*PFN_object_unbox)(
-    Il2CppObject
+    Il2CppObject obj
     );
 
+
+// il2cpp_object_get_class
 typedef Il2CppClass(*PFN_object_get_class)(
-    Il2CppObject
+    Il2CppObject obj
     );
 
+
+// il2cpp_class_get_parent
 typedef Il2CppClass(*PFN_class_get_parent)(
-    Il2CppClass
+    Il2CppClass klass
     );
 
+
+// il2cpp_class_get_name
 typedef const char* (*PFN_class_get_name)(
-    Il2CppClass
+    Il2CppClass klass
     );
 
+
+// il2cpp_class_get_type
 typedef const Il2CppType* (*PFN_class_get_type)(
-    Il2CppClass
+    Il2CppClass klass
     );
 
+
+// il2cpp_type_get_object
 typedef Il2CppReflectionType* (*PFN_type_get_object)(
-    const Il2CppType*
+    const Il2CppType* type
     );
 
+
+// il2cpp_class_from_type
 typedef Il2CppClass(*PFN_class_from_type)(
-    const Il2CppType*
+    const Il2CppType* type
     );
 
+
+// il2cpp_field_get_type
 typedef const Il2CppType* (*PFN_field_get_type)(
-    Il2CppField
+    Il2CppField field
     );
 
+
+// il2cpp_field_get_value
 typedef void(*PFN_field_get_value)(
-    Il2CppObject,
-    Il2CppField,
-    void*
+    Il2CppObject obj,
+    Il2CppField field,
+    void* value
     );
 
+
+// il2cpp_field_set_value
 typedef void(*PFN_field_set_value)(
-    Il2CppObject,
-    Il2CppField,
-    void*
+    Il2CppObject obj,
+    Il2CppField field,
+    void* value
     );
 
+
+// il2cpp_array_length
 typedef uint32_t(*PFN_array_length)(
-    void*
+    void* array
     );
 
+
+// il2cpp_thread_attach
 typedef void(*PFN_thread_attach)(
-    Il2CppDomain
+    Il2CppDomain domain
     );
 
+
+// il2cpp_thread_current
 typedef void* (*PFN_thread_current)();
 
 
-// ============================================================================
-// STRING CREATION
-//
-// Used when calling Unity/IL2CPP methods that expect a System.String.
-// ============================================================================
-
+// il2cpp_string_new
 typedef Il2CppObject(*PFN_string_new)(
-    const char*
+    const char* str
     );
 
 
@@ -131,53 +174,73 @@ typedef Il2CppObject(*PFN_string_new)(
 
 struct Il2CppApi
 {
-    // Domain
-    PFN_domain_get domain_get = nullptr;
-    PFN_domain_get_assemblies domain_get_assemblies = nullptr;
+    PFN_domain_get
+        domain_get{};
 
-    // Assemblies / classes
-    PFN_assembly_get_image assembly_get_image = nullptr;
-    PFN_class_from_name class_from_name = nullptr;
+    PFN_domain_get_assemblies
+        domain_get_assemblies{};
 
-    // Methods / fields
-    PFN_class_get_method_from_name class_get_method_from_name = nullptr;
-    PFN_class_get_field_from_name class_get_field_from_name = nullptr;
+    PFN_assembly_get_image
+        assembly_get_image{};
 
-    // Strings
-    PFN_string_new string_new = nullptr;
+    PFN_class_from_name
+        class_from_name{};
 
-    // Invocation
-    PFN_runtime_invoke runtime_invoke = nullptr;
+    PFN_class_get_method_from_name
+        class_get_method_from_name{};
 
-    // Objects
-    PFN_object_unbox object_unbox = nullptr;
-    PFN_object_get_class object_get_class = nullptr;
+    PFN_class_get_field_from_name
+        class_get_field_from_name{};
 
-    // Classes
-    PFN_class_get_parent class_get_parent = nullptr;
-    PFN_class_get_name class_get_name = nullptr;
-    PFN_class_get_type class_get_type = nullptr;
+    PFN_runtime_invoke
+        runtime_invoke{};
 
-    // Types
-    PFN_type_get_object type_get_object = nullptr;
-    PFN_class_from_type class_from_type = nullptr;
+    PFN_object_unbox
+        object_unbox{};
 
-    // Fields
-    PFN_field_get_type field_get_type = nullptr;
-    PFN_field_get_value field_get_value = nullptr;
-    PFN_field_set_value field_set_value = nullptr;
+    PFN_object_get_class
+        object_get_class{};
 
-    // Arrays
-    PFN_array_length array_length = nullptr;
+    PFN_class_get_parent
+        class_get_parent{};
 
-    // Threads
-    PFN_thread_attach thread_attach = nullptr;
-    PFN_thread_current thread_current = nullptr;
+    PFN_class_get_name
+        class_get_name{};
+
+    PFN_class_get_type
+        class_get_type{};
+
+    PFN_type_get_object
+        type_get_object{};
+
+    PFN_class_from_type
+        class_from_type{};
+
+    PFN_field_get_type
+        field_get_type{};
+
+    PFN_field_get_value
+        field_get_value{};
+
+    PFN_field_set_value
+        field_set_value{};
+
+    PFN_array_length
+        array_length{};
+
+    PFN_thread_attach
+        thread_attach{};
+
+    PFN_thread_current
+        thread_current{};
+
+    PFN_string_new
+        string_new{};
 };
 
 
 // ============================================================================
-// LOADING
+// HELPERS
 // ============================================================================
 
 bool LoadIl2CppApi(
@@ -186,21 +249,19 @@ bool LoadIl2CppApi(
 );
 
 
-// ============================================================================
-// HELPERS
-// ============================================================================
-
 Il2CppClass FindIl2CppClass(
     const Il2CppApi& api,
     const char* nameSpace,
     const char* name
 );
 
+
 Il2CppField FindFieldInHierarchy(
     const Il2CppApi& api,
     Il2CppClass klass,
     const char* name
 );
+
 
 void** ArrayElements(
     void* array
