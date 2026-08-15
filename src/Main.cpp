@@ -1,33 +1,27 @@
 #include "Main.h"
 #include "VarCtl.h"
 
-// ============================================================================
-// CONTROLLER CONFIGURATION
-//
-// This file ONLY describes what we want VarCtl to control.
-//
-// The actual runtime Controller lives privately inside VarCtl.cpp.
-// ============================================================================
+// ============================================================
+// Controller configuration
+// ============================================================
 
 ControllerConfig g_controllers[] =
 {
-    // ========================================================================
-    // CAMERA
-    // ========================================================================
-
+    // --------------------------------------------------------
+    // Camera Distance
+    // --------------------------------------------------------
     {
         "Camera Distance",
         "distance",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Float,
 
         1.0f,
-        10.0f,
 
-        0,
-        false,
+        10.0f,       // defaultFloat
+        0,           // defaultInt
+        false,       // defaultBool
 
         { 0.0f, 0.0f, 0.0f },
 
@@ -37,17 +31,20 @@ ControllerConfig g_controllers[] =
         true
     },
 
+
+    // --------------------------------------------------------
+    // Camera Rotation Speed
+    // --------------------------------------------------------
     {
         "Camera Rotation Speed",
         "rotateSpeed",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Float,
 
         1.0f,
-        10.0f,
 
+        10.0f,
         0,
         false,
 
@@ -59,17 +56,20 @@ ControllerConfig g_controllers[] =
         true
     },
 
+
+    // --------------------------------------------------------
+    // Camera Rotation
+    // --------------------------------------------------------
     {
         "Camera Rotation",
         "yAngle",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Float,
 
         1.0f,
-        10.0f,
 
+        10.0f,
         0,
         false,
 
@@ -81,17 +81,20 @@ ControllerConfig g_controllers[] =
         true
     },
 
+
+    // --------------------------------------------------------
+    // Camera Offset
+    // --------------------------------------------------------
     {
         "Camera Offset",
         "yOffset",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Float,
 
         1.0f,
-        0.0f,
 
+        0.0f,
         0,
         false,
 
@@ -103,17 +106,20 @@ ControllerConfig g_controllers[] =
         true
     },
 
+
+    // --------------------------------------------------------
+    // Stop Camera
+    // --------------------------------------------------------
     {
         "Stop Camera",
         "speed",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Float,
 
         1.0f,
-        0.0f,
 
+        0.0f,
         0,
         false,
 
@@ -126,21 +132,19 @@ ControllerConfig g_controllers[] =
     },
 
 
-    // ========================================================================
-    // SKI
-    // ========================================================================
-
+    // --------------------------------------------------------
+    // Pop Skis
+    // --------------------------------------------------------
     {
         "Pop Skis",
         "skiBreakForce",
 
         ControllerKind::Field,
-
         VarCtl::ValueType::Vector3,
 
         1.0f,
-        0.0f,
 
+        0.0f,
         0,
         false,
 
@@ -153,25 +157,23 @@ ControllerConfig g_controllers[] =
     },
 
 
-    // ========================================================================
-    // TRANSFORMS
+    // ========================================================
+    // TRANSFORM EXAMPLES
     //
-    // These are NOT ordinary fields.
-    //
-    // The id is the object name that VarCtl will search for.
-    // ========================================================================
+    // These are ready for the transform system once
+    // VarCtl.cpp supports ControllerKind::Transform.
+    // ========================================================
 
     {
         "Left Ski Position",
-        "LeftSki",
+        "Bodies/SkiCharacter(Clone)/LeftSki/Mesh",
 
         ControllerKind::Transform,
-
         VarCtl::ValueType::Vector3,
 
-        0.1f,
-        0.0f,
+        1.0f,
 
+        0.0f,
         0,
         false,
 
@@ -183,17 +185,17 @@ ControllerConfig g_controllers[] =
         false
     },
 
+
     {
         "Left Ski Rotation",
-        "LeftSki",
+        "Bodies/SkiCharacter(Clone)/LeftSki/Mesh",
 
         ControllerKind::Transform,
-
         VarCtl::ValueType::Vector3,
 
         1.0f,
-        0.0f,
 
+        0.0f,
         0,
         false,
 
@@ -205,17 +207,17 @@ ControllerConfig g_controllers[] =
         false
     },
 
+
     {
         "Left Ski Scale",
-        "LeftSki",
+        "Bodies/SkiCharacter(Clone)/LeftSki/Mesh",
 
         ControllerKind::Transform,
-
         VarCtl::ValueType::Vector3,
 
-        0.01f,
         1.0f,
 
+        0.0f,
         0,
         false,
 
@@ -229,10 +231,9 @@ ControllerConfig g_controllers[] =
 };
 
 
-// ============================================================================
-// CONTROLLER COUNT
-// ============================================================================
+// ============================================================
+// Controller count
+// ============================================================
 
 const size_t g_controllers_count =
-sizeof(g_controllers) /
-sizeof(g_controllers[0]);
+sizeof(g_controllers) / sizeof(g_controllers[0]);
