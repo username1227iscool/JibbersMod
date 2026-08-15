@@ -1,19 +1,69 @@
 #pragma once
-#include <atomic>
 
-// ============================================================================
-// EventHooks -- detects (and optionally intercepts) game events by
-// redirecting the game's own compiled methods with MinHook, instead of
-// polling a field every frame like VarCtl does.
-// ============================================================================
+#include <cstddef>
 
 namespace EventHooks
 {
+    // ------------------------------------------------------------------------
+    // Event callback
+    //
+    // self      = IL2CPP object that received the method call
+    // args      = native arguments after self
+    // argCount  = number of arguments
+    //
+    // Example:
+    //
+    // OnCollisionEnter(Collision collision)
+    //
+    // args[0] = Collision*
+    // ------------------------------------------------------------------------
+
+    using EventCallback =
+        void(*)(void* self, void** args, std::size_t argCount);
+
+    // ------------------------------------------------------------------------
+    // Event definition
+    // ------------------------------------------------------------------------
+
+    struct EventDefinition
+    {
+        const char* name;
+        const char* namespaceName;
+        const char* className;
+        const char* methodName;
+
+        // Number of explicit C# arguments.
+        //
+        // Example:
+        // void OnCollisionEnter(Collision collision)
+        //                                      ^ 1 argument
+        //
+        // void Foo()
+        //        ^ 0 arguments
+        int argumentCount;
+
+        EventCallback callback;
+    };
+
+    // ------------------------------------------------------------------------
+    // Initialization
+    // ------------------------------------------------------------------------
+
     bool Init();
+
     void Shutdown();
 
-    // Example toggle: when true, the TakeDamage hook below suppresses the
-    // real damage call entirely instead of just logging it. Flip this from
-    // your GUI the same way VarCtl's active flags are flipped.
-    extern std::atomic<bool> g_godMode;
+    // ------------------------------------------------------------------------
+    // Register an event
+    //
+    // Normally called by Events.cpp.
+    // ------------------------------------------------------------------------
+
+    bool RegisterEvent(const EventDefinition& definition);
+
+    // ------------------------------------------------------------------------
+    // Remove all registered hooks.
+    // ------------------------------------------------------------------------
+
+    void RemoveAllEvents();
 }

@@ -1,77 +1,66 @@
 #include "EventHooks.h"
+
 #include "Backend/il2cpp_api.h"
 #include "MinHook.h"
 
 #include <windows.h>
-#include <atomic>
 
-// ============================================================================
-// EventHooks
-//
-// Hooks actual IL2CPP methods with MinHook instead of polling fields.
-//
-// IMPORTANT:
-// 1. Set TARGET_NAMESPACE / TARGET_CLASS / TARGET_METHOD to the real IL2CPP
-//    method you want to hook.
-// 2. The TakeDamageFn signature MUST exactly match the game's native method
-//    signature. The example below assumes:
-//
-//        void TakeDamage(float damage)
-//
-//    IL2CPP instance methods also receive the object pointer as the first
-//    native argument and MethodInfo* as the final hidden argument.
-// ============================================================================
+#include <atomic>
+#include <cstddef>
+#include <cstring>
+#include <mutex>
+#include <string>
+#include <vector>
 
 namespace
 {
-    // ------------------------------------------------------------------------
-    // IL2CPP API
-    // ------------------------------------------------------------------------
+    // ========================================================================
+    // IL2CPP
+    // ========================================================================
 
     Il2CppApi g_api{};
     bool g_apiReady = false;
 
-    // ------------------------------------------------------------------------
-    // Target method
-    // ------------------------------------------------------------------------
+    // ========================================================================
+    // Hook information
+    // ========================================================================
 
-    constexpr const char* TARGET_NAMESPACE = "";
-    constexpr const char* TARGET_CLASS = "UnityMessageListener";
-    constexpr const char* TARGET_METHOD = "OnCollisionEnter";
+    struct Hook
+    {
+        EventHooks::EventDefinition definition{};
 
-    // ------------------------------------------------------------------------
-    // IMPORTANT: Match this to the REAL native method signature.
-    //
-    // Example assumed IL2CPP C#:
-    //
-    //     public void TakeDamage(float damage)
-    //
-    // Native form:
-    //
-    //     void TakeDamage(void* thisPtr, float damage, void* methodInfo)
-    //
-    // On x64 Windows __fastcall is the normal ABI, but keeping it here makes
-    // the intended calling convention explicit.
-    // ------------------------------------------------------------------------
+        void* targetAddress = nullptr;
+        void* originalFunction = nullptr;
 
-    using TakeDamageFn =
-        void(__fastcall*)(void* self, float damage, void* methodInfo);
+        int argumentCount = 0;
+    };
 
-    TakeDamageFn g_originalTakeDamage = nullptr;
-    void* g_targetAddress = nullptr;
+    std::vector<Hook> g_hooks;
 
-    // ------------------------------------------------------------------------
-    // IL2CPP thread attachment
-    // ------------------------------------------------------------------------
+    std::mutex g_hookMutex;
+
+    bool g_initialized = false;
+
+    // ========================================================================
+    // Thread attachment
+    // ========================================================================
 
     void EnsureThreadAttached()
     {
         thread_local bool attached = false;
 
-        if (attached || !g_api.thread_attach || !g_api.domain_get)
+        if (attached)
             return;
 
-        if (g_api.thread_current && g_api.thread_current())
+        if (!g_api.thread_attach ||
+            !g_api.domain_get)
+        {
+            return;
+        }
+
+        // Already attached?
+        if (g_api.thread_current &&
+            g_api.thread_current())
         {
             attached = true;
             return;
@@ -86,54 +75,464 @@ namespace
         attached = true;
     }
 
-    // ------------------------------------------------------------------------
-    // TakeDamage detour
-    // ------------------------------------------------------------------------
+    // ========================================================================
+    // Generic hook storage
+    // ========================================================================
     //
-    // This runs immediately when the game calls TakeDamage.
+    // IMPORTANT:
     //
-    // g_godMode == false:
-    //     run the game's original damage function.
+    // MinHook jumps into a function with the SAME native ABI as the function
+    // being hooked.
     //
-    // g_godMode == true:
-    //     do NOT call the original function, completely suppressing damage.
-    // ------------------------------------------------------------------------
+    // We therefore provide several detours for different argument counts.
+    //
+    // The most useful common cases are:
+    //
+    //     void Foo()
+    //     void Foo(void*)
+    //     void Foo(void*, void*)
+    //     void Foo(void*, void*, void*)
+    //
+    // The first argument is always "self".
+    //
+    // Additional arguments are passed through as void*.
+    //
+    // ========================================================================
 
-    void __fastcall TakeDamageDetour(
-        void* self,
-        float damage,
-        void* methodInfo)
+    using Hook0 =
+        void(__fastcall*)(void* self, void* methodInfo);
+
+    using Hook1 =
+        void(__fastcall*)(void* self, void* arg0, void* methodInfo);
+
+    using Hook2 =
+        void(__fastcall*)(
+            void* self,
+            void* arg0,
+            void* arg1,
+            void* methodInfo);
+
+    using Hook3 =
+        void(__fastcall*)(
+            void* self,
+            void* arg0,
+            void* arg1,
+            void* arg2,
+            void* methodInfo);
+
+    // ========================================================================
+    // Find hook by original function
+    // ========================================================================
+
+    Hook* FindHook(void* address)
     {
-        // We have the real event and its arguments here.
-        //
-        // Example:
-        //
-        // OutputDebugStringA("TakeDamage called\n");
-
-        if (EventHooks::g_godMode.load(std::memory_order_relaxed))
+        for (Hook& hook : g_hooks)
         {
-            // Suppress the game's actual damage logic.
-            return;
+            if (hook.targetAddress == address)
+                return &hook;
         }
 
-        // Preserve normal game behavior.
-        if (g_originalTakeDamage)
+        return nullptr;
+    }
+
+    // ========================================================================
+    // Dispatch
+    // ========================================================================
+
+    void Dispatch(
+        Hook& hook,
+        void* self,
+        void** args,
+        std::size_t argCount)
+    {
+        if (!hook.definition.callback)
+            return;
+
+        hook.definition.callback(
+            self,
+            args,
+            argCount
+        );
+    }
+
+    // ========================================================================
+    // 0 argument detour
+    // ========================================================================
+
+    void __fastcall Detour0(
+        void* self,
+        void* methodInfo)
+    {
+        Hook* hook = FindHook(
+            reinterpret_cast<void*>(&Detour0)
+        );
+
+        // FindHook cannot identify the original target here because MinHook
+        // jumps directly to this detour. We therefore use the thread-local
+        // dispatch target set immediately before the call.
+    }
+
+    // ========================================================================
+    // Generic dispatch context
+    // ========================================================================
+    //
+    // Because MinHook requires an actual native function signature, we use
+    // thread-local state to tell the detour which registered hook it belongs
+    // to.
+    //
+    // Each generated detour below has a fixed signature.
+    //
+    // ========================================================================
+
+    thread_local Hook* g_currentHook = nullptr;
+
+    // ========================================================================
+    // 0 argument
+    // ========================================================================
+
+    void __fastcall EventDetour0(
+        void* self,
+        void* methodInfo)
+    {
+        Hook* hook = g_currentHook;
+
+        if (hook)
         {
-            g_originalTakeDamage(self, damage, methodInfo);
+            Dispatch(
+                *hook,
+                self,
+                nullptr,
+                0
+            );
+
+            auto original =
+                reinterpret_cast<Hook0>(
+                    hook->originalFunction
+                    );
+
+            if (original)
+            {
+                original(
+                    self,
+                    methodInfo
+                );
+            }
+
+            return;
         }
     }
 
-    // ------------------------------------------------------------------------
-    // Resolve target method
-    // ------------------------------------------------------------------------
+    // ========================================================================
+    // 1 argument
+    // ========================================================================
 
-    bool ResolveTakeDamage()
+    void __fastcall EventDetour1(
+        void* self,
+        void* arg0,
+        void* methodInfo)
+    {
+        Hook* hook = g_currentHook;
+
+        if (hook)
+        {
+            void* args[] =
+            {
+                arg0
+            };
+
+            Dispatch(
+                *hook,
+                self,
+                args,
+                1
+            );
+
+            auto original =
+                reinterpret_cast<Hook1>(
+                    hook->originalFunction
+                    );
+
+            if (original)
+            {
+                original(
+                    self,
+                    arg0,
+                    methodInfo
+                );
+            }
+
+            return;
+        }
+    }
+
+    // ========================================================================
+    // 2 arguments
+    // ========================================================================
+
+    void __fastcall EventDetour2(
+        void* self,
+        void* arg0,
+        void* arg1,
+        void* methodInfo)
+    {
+        Hook* hook = g_currentHook;
+
+        if (hook)
+        {
+            void* args[] =
+            {
+                arg0,
+                arg1
+            };
+
+            Dispatch(
+                *hook,
+                self,
+                args,
+                2
+            );
+
+            auto original =
+                reinterpret_cast<Hook2>(
+                    hook->originalFunction
+                    );
+
+            if (original)
+            {
+                original(
+                    self,
+                    arg0,
+                    arg1,
+                    methodInfo
+                );
+            }
+
+            return;
+        }
+    }
+
+    // ========================================================================
+    // 3 arguments
+    // ========================================================================
+
+    void __fastcall EventDetour3(
+        void* self,
+        void* arg0,
+        void* arg1,
+        void* arg2,
+        void* methodInfo)
+    {
+        Hook* hook = g_currentHook;
+
+        if (hook)
+        {
+            void* args[] =
+            {
+                arg0,
+                arg1,
+                arg2
+            };
+
+            Dispatch(
+                *hook,
+                self,
+                args,
+                3
+            );
+
+            auto original =
+                reinterpret_cast<Hook3>(
+                    hook->originalFunction
+                    );
+
+            if (original)
+            {
+                original(
+                    self,
+                    arg0,
+                    arg1,
+                    arg2,
+                    methodInfo
+                );
+            }
+
+            return;
+        }
+    }
+
+    // ========================================================================
+    // IMPORTANT:
+    //
+    // MinHook detours are shared by argument count. We need to know which
+    // EventDefinition caused the call.
+    //
+    // The clean solution is one generated trampoline per registered event.
+    //
+    // For the first implementation, we support a fixed number of event slots.
+    // ========================================================================
+
+    constexpr int MAX_EVENTS = 32;
+
+    Hook* g_eventSlots[MAX_EVENTS]{};
+
+    // ========================================================================
+    // Slot detours
+    // ========================================================================
+    //
+    // Each slot has its own function so we can identify the event without
+    // relying on global "current hook" state.
+    //
+    // ========================================================================
+
+#define DEFINE_EVENT_SLOT(N)                                                \
+    void __fastcall EventSlot##N##0(void* self, void* methodInfo)           \
+    {                                                                        \
+        Hook* hook = g_eventSlots[N];                                       \
+        if (!hook) return;                                                  \
+                                                                             \
+        if (hook->definition.callback)                                      \
+        {                                                                    \
+            hook->definition.callback(self, nullptr, 0);                    \
+        }                                                                    \
+                                                                             \
+        auto original =                                                     \
+            reinterpret_cast<Hook0>(hook->originalFunction);                \
+                                                                             \
+        if (original)                                                        \
+            original(self, methodInfo);                                    \
+    }                                                                        \
+                                                                             \
+    void __fastcall EventSlot##N##1(                                        \
+        void* self,                                                         \
+        void* arg0,                                                         \
+        void* methodInfo)                                                   \
+    {                                                                        \
+        Hook* hook = g_eventSlots[N];                                       \
+        if (!hook) return;                                                  \
+                                                                             \
+        void* args[] = { arg0 };                                            \
+                                                                             \
+        if (hook->definition.callback)                                      \
+        {                                                                    \
+            hook->definition.callback(self, args, 1);                       \
+        }                                                                    \
+                                                                             \
+        auto original =                                                     \
+            reinterpret_cast<Hook1>(hook->originalFunction);                \
+                                                                             \
+        if (original)                                                        \
+            original(self, arg0, methodInfo);                              \
+    }                                                                        \
+                                                                             \
+    void __fastcall EventSlot##N##2(                                        \
+        void* self,                                                         \
+        void* arg0,                                                         \
+        void* arg1,                                                         \
+        void* methodInfo)                                                   \
+    {                                                                        \
+        Hook* hook = g_eventSlots[N];                                       \
+        if (!hook) return;                                                  \
+                                                                             \
+        void* args[] = { arg0, arg1 };                                      \
+                                                                             \
+        if (hook->definition.callback)                                      \
+        {                                                                    \
+            hook->definition.callback(self, args, 2);                       \
+        }                                                                    \
+                                                                             \
+        auto original =                                                     \
+            reinterpret_cast<Hook2>(hook->originalFunction);                \
+                                                                             \
+        if (original)                                                        \
+            original(self, arg0, arg1, methodInfo);                        \
+    }                                                                        \
+                                                                             \
+    void __fastcall EventSlot##N##3(                                        \
+        void* self,                                                         \
+        void* arg0,                                                         \
+        void* arg1,                                                         \
+        void* arg2,                                                         \
+        void* methodInfo)                                                   \
+    {                                                                        \
+        Hook* hook = g_eventSlots[N];                                       \
+        if (!hook) return;                                                  \
+                                                                             \
+        void* args[] = { arg0, arg1, arg2 };                                \
+                                                                             \
+        if (hook->definition.callback)                                      \
+        {                                                                    \
+            hook->definition.callback(self, args, 3);                       \
+        }                                                                    \
+                                                                             \
+        auto original =                                                     \
+            reinterpret_cast<Hook3>(hook->originalFunction);                \
+                                                                             \
+        if (original)                                                        \
+            original(self, arg0, arg1, arg2, methodInfo);                  \
+    }
+
+    DEFINE_EVENT_SLOT(0)
+        DEFINE_EVENT_SLOT(1)
+        DEFINE_EVENT_SLOT(2)
+        DEFINE_EVENT_SLOT(3)
+        DEFINE_EVENT_SLOT(4)
+        DEFINE_EVENT_SLOT(5)
+        DEFINE_EVENT_SLOT(6)
+        DEFINE_EVENT_SLOT(7)
+
+#undef DEFINE_EVENT_SLOT
+
+        using DetourGetter =
+        void* (*)(int slot, int argumentCount);
+
+#define GET_SLOT_CASE(N)                                                    \
+        case N:                                                              \
+            switch (argumentCount)                                          \
+            {                                                                \
+                case 0: return reinterpret_cast<void*>(&EventSlot##N##0);   \
+                case 1: return reinterpret_cast<void*>(&EventSlot##N##1);   \
+                case 2: return reinterpret_cast<void*>(&EventSlot##N##2);   \
+                case 3: return reinterpret_cast<void*>(&EventSlot##N##3);   \
+            }                                                                \
+            break;
+
+    void* GetDetour(
+        int slot,
+        int argumentCount)
+    {
+        switch (slot)
+        {
+            GET_SLOT_CASE(0)
+                GET_SLOT_CASE(1)
+                GET_SLOT_CASE(2)
+                GET_SLOT_CASE(3)
+                GET_SLOT_CASE(4)
+                GET_SLOT_CASE(5)
+                GET_SLOT_CASE(6)
+                GET_SLOT_CASE(7)
+
+        default:
+            break;
+        }
+
+        return nullptr;
+    }
+
+#undef GET_SLOT_CASE
+
+    // ========================================================================
+    // Resolve IL2CPP method
+    // ========================================================================
+
+    bool ResolveMethod(
+        const EventHooks::EventDefinition& definition,
+        void*& address)
     {
         Il2CppClass klass =
             FindIl2CppClass(
                 g_api,
-                TARGET_NAMESPACE,
-                TARGET_CLASS
+                definition.namespaceName,
+                definition.className
             );
 
         if (!klass)
@@ -142,51 +541,38 @@ namespace
         Il2CppMethod method =
             g_api.class_get_method_from_name(
                 klass,
-                TARGET_METHOD,
-                1
+                definition.methodName,
+                definition.argumentCount
             );
 
         if (!method)
             return false;
 
-        // The repo's Il2CppMethod typedef is currently void*, so method itself
-        // points at the Il2CppMethod structure.
-        //
-        // In an IL2CPP build, methodPointer is stored at the beginning of the
-        // method metadata structure used by this project. We read that native
-        // pointer here so MinHook can hook the compiled function.
-        //
-        // If your game's Il2CppMethod layout differs, this is the one part
-        // that must be adapted to the generated IL2CPP metadata layout.
+        // This matches the Il2CppMethod representation used by the current
+        // project.
         void* methodPointer =
             *reinterpret_cast<void**>(method);
 
         if (!methodPointer)
             return false;
 
-        g_targetAddress = methodPointer;
+        address = methodPointer;
+
         return true;
     }
 }
 
 // ============================================================================
-// Public state
+// Public EventHooks API
 // ============================================================================
 
 namespace EventHooks
 {
-    std::atomic<bool> g_godMode{ false };
-
-    // ------------------------------------------------------------------------
-    // Init
-    // ------------------------------------------------------------------------
-
     bool Init()
     {
-        if (g_targetAddress)
+        if (g_initialized)
             return true;
 
-        // Load GameAssembly / IL2CPP exports using the same loader as VarCtl.
         if (!LoadIl2CppApi(g_api, 60000))
             return false;
 
@@ -194,64 +580,145 @@ namespace EventHooks
 
         EnsureThreadAttached();
 
-        if (!ResolveTakeDamage())
-            return false;
-
-        // MinHook must be initialized before creating hooks.
         MH_STATUS status = MH_Initialize();
 
         if (status != MH_OK &&
             status != MH_ERROR_ALREADY_INITIALIZED)
         {
-            g_targetAddress = nullptr;
             return false;
         }
 
-        status = MH_CreateHook(
-            g_targetAddress,
-            reinterpret_cast<void*>(&TakeDamageDetour),
-            reinterpret_cast<void**>(&g_originalTakeDamage)
-        );
+        g_initialized = true;
 
-        if (status != MH_OK)
+        return true;
+    }
+
+    bool RegisterEvent(
+        const EventDefinition& definition)
+    {
+        if (!g_initialized)
+            return false;
+
+        if (!definition.className ||
+            !definition.methodName ||
+            !definition.callback)
         {
-            g_targetAddress = nullptr;
-            g_originalTakeDamage = nullptr;
             return false;
         }
 
-        status = MH_EnableHook(g_targetAddress);
+        if (definition.argumentCount < 0 ||
+            definition.argumentCount > 3)
+        {
+            return false;
+        }
+
+        std::lock_guard<std::mutex> lock(g_hookMutex);
+
+        // Find free slot.
+        int slot = -1;
+
+        for (int i = 0; i < 8; ++i)
+        {
+            if (!g_eventSlots[i])
+            {
+                slot = i;
+                break;
+            }
+        }
+
+        if (slot < 0)
+            return false;
+
+        Hook hook{};
+
+        hook.definition = definition;
+        hook.argumentCount = definition.argumentCount;
+
+        if (!ResolveMethod(
+            definition,
+            hook.targetAddress))
+        {
+            return false;
+        }
+
+        void* detour =
+            GetDetour(
+                slot,
+                definition.argumentCount
+            );
+
+        if (!detour)
+            return false;
+
+        MH_STATUS status =
+            MH_CreateHook(
+                hook.targetAddress,
+                detour,
+                &hook.originalFunction
+            );
+
+        if (status != MH_OK)
+            return false;
+
+        g_hooks.push_back(hook);
+
+        g_eventSlots[slot] = &g_hooks.back();
+
+        status =
+            MH_EnableHook(
+                hook.targetAddress
+            );
 
         if (status != MH_OK)
         {
-            MH_RemoveHook(g_targetAddress);
+            g_eventSlots[slot] = nullptr;
 
-            g_targetAddress = nullptr;
-            g_originalTakeDamage = nullptr;
+            g_hooks.pop_back();
+
+            MH_RemoveHook(
+                hook.targetAddress
+            );
+
             return false;
         }
 
         return true;
     }
 
-    // ------------------------------------------------------------------------
-    // Shutdown
-    // ------------------------------------------------------------------------
+    void RemoveAllEvents()
+    {
+        std::lock_guard<std::mutex> lock(g_hookMutex);
+
+        for (Hook& hook : g_hooks)
+        {
+            if (hook.targetAddress)
+            {
+                MH_DisableHook(
+                    hook.targetAddress
+                );
+
+                MH_RemoveHook(
+                    hook.targetAddress
+                );
+            }
+        }
+
+        for (auto& slot : g_eventSlots)
+            slot = nullptr;
+
+        g_hooks.clear();
+    }
 
     void Shutdown()
     {
-        if (!g_targetAddress)
+        if (!g_initialized)
             return;
 
-        MH_DisableHook(g_targetAddress);
-        MH_RemoveHook(g_targetAddress);
+        RemoveAllEvents();
 
-        g_targetAddress = nullptr;
-        g_originalTakeDamage = nullptr;
+        g_initialized = false;
 
-        g_godMode.store(false, std::memory_order_relaxed);
-
-        // Do NOT call MH_Uninitialize() here if dllmain.cpp is still doing it
-        // globally on DLL_PROCESS_DETACH.
+        // Leave MH_Uninitialize() to your DLL shutdown code if that is where
+        // your project currently handles MinHook shutdown.
     }
 }
