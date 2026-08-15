@@ -15,6 +15,7 @@
 #include <conio.h>
 #include <iostream>
 #include <string>
+#include <filesystem>
 
 namespace
 {
@@ -230,7 +231,31 @@ int wmain(int argc, wchar_t** argv)
     // "--process", "--auto" to skip the Insert-key wait) instead of
     // relying on positional args.
     // ------------------------------------------------------------------
-    std::wstring dllPath = argc > 1 ? argv[1] : ExeDirectory() + L"Jummpers.dll";
+    std::wstring dllPath;
+
+    if (argc > 1)
+    {
+        // DLL explicitly provided as an argument
+        dllPath = argv[1];
+    }
+    else
+    {
+        // Automatically find the first .dll in the EXE directory
+        for (const auto& entry : std::filesystem::directory_iterator(ExeDirectory()))
+        {
+            if (entry.path().extension() == L".dll")
+            {
+                dllPath = entry.path().wstring();
+                break;
+            }
+        }
+    }
+
+    if (dllPath.empty())
+    {
+        std::wcerr << L"No DLL found.\n";
+        return 1;
+    }
     std::wstring processName = argc > 2 ? argv[2] : L"Jibbers.exe";
 
     if (GetFileAttributesW(dllPath.c_str()) == INVALID_FILE_ATTRIBUTES)
@@ -238,7 +263,6 @@ int wmain(int argc, wchar_t** argv)
         std::wcerr << L"dll not found: " << dllPath << std::endl;
         return Finish(1);
     }
-
     std::wcout << L"waiting for " << processName << L"..." << std::endl;
 
     // ------------------------------------------------------------------

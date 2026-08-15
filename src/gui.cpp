@@ -471,9 +471,15 @@ namespace
             VarCtl::CurrentVector3At(index);
 
         ImGui::Text(
-            "current X %.3f  Y %.3f  Z %.3f",
-            current.x,
-            current.y,
+            "current X %.3f",
+            current.x
+        );
+        ImGui::Text(
+            "Y %.3f",
+            current.y
+        );
+        ImGui::Text(
+            "Z %.3f",
             current.z
         );
 

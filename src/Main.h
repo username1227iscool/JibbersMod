@@ -1,6 +1,34 @@
 #pragma once
 
-// The per-variable display names, field names, and slider limits that used
-// to live here (SliderName1/2, FieldName1/2, LowerLimit1/2, UperLimit1/2)
-// have all moved into the single g_controllers[] list in VarCtl.cpp, so
-// adding or editing a controlled variable only touches one file.
+#include <cstddef>
+#include "VarCtl.h"
+
+enum class ControllerKind
+{
+    Field,
+    Transform
+};
+
+struct ControllerConfig
+{
+    const char* name;
+    const char* id;
+
+    VarCtl::ValueType type;
+
+    float step;
+    float defaultVal;
+
+    int flags;
+    bool isBool;
+
+    float vectorOverride[3];
+
+    float minVal;
+    float maxVal;
+
+    bool hasSlider;
+};
+
+extern ControllerConfig g_controllers[];
+extern const size_t g_controllers_count;
