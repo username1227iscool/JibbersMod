@@ -3,28 +3,28 @@
   "WorkspaceRootPath": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\VarCtl.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\VarCtl.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Main.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Main.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\il2cpp_api.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\il2cpp_api.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\VarCtl.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    },
+    {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\il2cpp_api.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
       "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\il2cpp_api.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\Main.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:src\\VarCtl.h||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
     },
     {
       "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\jibbers dump\\dump.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -74,7 +74,7 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 5,
+          "SelectedChildIndex": 8,
           "Children": [
             {
               "$type": "Document",
@@ -97,9 +97,10 @@
               "RelativeDocumentMoniker": "jibbers dump\\dump.cs",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\jibbers dump\\dump.cs",
               "RelativeToolTip": "jibbers dump\\dump.cs",
-              "ViewState": "AgIAAJFSAAAAAAAAAAAswKtSAAAdAAAAAAAAAA==",
+              "ViewState": "AgIAAEFeAAAAAAAAAAAswFBeAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-08-14T18:38:55.307Z"
+              "WhenOpened": "2026-08-14T18:38:55.307Z",
+              "EditorCaption": ""
             },
             {
               "$type": "Document",
@@ -127,26 +128,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 5,
               "Title": "VarCtl.h",
               "DocumentMoniker": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.h",
               "RelativeDocumentMoniker": "src\\VarCtl.h",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.h",
               "RelativeToolTip": "src\\VarCtl.h",
-              "ViewState": "AgIAAH4AAAAAAAAAAAAmwJgAAAAAAAAAAAAAAA==",
+              "ViewState": "AgIAAH4AAAAAAAAAAAAmwJ8AAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2026-08-14T06:41:33.624Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 0,
+              "DocumentIndex": 3,
               "Title": "VarCtl.cpp",
               "DocumentMoniker": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.cpp",
               "RelativeDocumentMoniker": "src\\VarCtl.cpp",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\VarCtl.cpp",
               "RelativeToolTip": "src\\VarCtl.cpp",
-              "ViewState": "AgIAAHwGAAAAAAAAAAAmwIkGAAAbAAAAAAAAAA==",
+              "ViewState": "AgIAAIkJAAAAAAAAAAAmwKoJAAABAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-08-14T05:46:26.486Z",
               "EditorCaption": ""
@@ -165,26 +166,26 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 5,
+              "DocumentIndex": 1,
               "Title": "Main.h",
               "DocumentMoniker": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.h",
               "RelativeDocumentMoniker": "src\\Main.h",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.h",
               "RelativeToolTip": "src\\Main.h",
-              "ViewState": "AgIAACgAAAAAAAAAAAAmwD0AAAAoAAAAAAAAAA==",
+              "ViewState": "AgIAAA8AAAAAAAAAAAAAADIAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000680|",
               "WhenOpened": "2026-08-14T04:21:55.258Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
+              "DocumentIndex": 0,
               "Title": "Main.cpp",
               "DocumentMoniker": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.cpp",
               "RelativeDocumentMoniker": "src\\Main.cpp",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\Main.cpp",
               "RelativeToolTip": "src\\Main.cpp",
-              "ViewState": "AgIAAHMAAAAAAAAAAAAmwBIBAAAZAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-08-14T04:21:41.039Z",
               "EditorCaption": ""
@@ -203,13 +204,13 @@
             },
             {
               "$type": "Document",
-              "DocumentIndex": 3,
+              "DocumentIndex": 2,
               "Title": "il2cpp_api.cpp",
               "DocumentMoniker": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\il2cpp_api.cpp",
               "RelativeDocumentMoniker": "src\\il2cpp_api.cpp",
               "ToolTip": "C:\\Users\\trevd\\Downloads\\jibbersTools\\RealMods\\testmod\\src\\il2cpp_api.cpp",
               "RelativeToolTip": "src\\il2cpp_api.cpp",
-              "ViewState": "AgIAAMIBAAAAAAAAAAAmwNMBAAABAAAAAAAAAA==",
+              "ViewState": "AgIAAOQBAAAAAAAAAAAmwPMBAAAFAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
               "WhenOpened": "2026-08-14T03:13:30.12Z",
               "EditorCaption": ""
